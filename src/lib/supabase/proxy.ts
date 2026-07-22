@@ -33,11 +33,10 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // /onboarding is intentionally NOT protected — it's a pre-signup explainer
+  // (see onboarding/page.tsx for the cookie-based "already onboarded" redirect).
   const path = request.nextUrl.pathname;
-  const isProtected =
-    path.startsWith("/dashboard") ||
-    path.startsWith("/predictions") ||
-    path.startsWith("/onboarding");
+  const isProtected = path.startsWith("/dashboard") || path.startsWith("/predictions");
 
   if (isProtected && !user) {
     const url = request.nextUrl.clone();

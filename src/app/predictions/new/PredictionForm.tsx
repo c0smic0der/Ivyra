@@ -4,6 +4,9 @@ import { useActionState, useEffect, useState } from "react";
 import { createPrediction, type CreatePredictionState } from "./actions";
 import { TrackRecordPanel } from "./TrackRecordPanel";
 import { useTrackRecordPanel } from "./useTrackRecordPanel";
+import { buttonVariants } from "@/components/ui/button";
+import { inputClasses } from "@/components/ui/input";
+import { cx } from "@/components/ui/cx";
 
 const PLACEHOLDER_EXAMPLES = [
   "The kitchen reno finishes by Aug 15",
@@ -47,9 +50,9 @@ export function PredictionForm({
       : "If the contractor tells me the permit was denied, I'd drop my confidence a lot.";
 
   return (
-    <form action={formAction} className="mt-6 flex flex-col gap-5">
+    <form action={formAction} className="flex flex-col gap-5">
       <div>
-        <label htmlFor="text" className="block text-sm font-medium">
+        <label htmlFor="text" className="block text-sm font-medium text-ink">
           What do you think will happen?
         </label>
         <textarea
@@ -60,12 +63,12 @@ export function PredictionForm({
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder={PLACEHOLDER_EXAMPLES[placeholderIndex]}
-          className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
+          className={inputClasses("mt-1")}
         />
         {state.fieldErrors?.text && (
-          <p className="mt-1 text-sm text-red-600">{state.fieldErrors.text[0]}</p>
+          <p className="mt-1 text-sm text-danger">{state.fieldErrors.text[0]}</p>
         )}
-        <details className="mt-2 text-sm text-zinc-500">
+        <details className="mt-2 text-sm text-ink-secondary">
           <summary className="cursor-pointer">What makes a good prediction?</summary>
           <ul className="mt-2 list-disc pl-5">
             <li>Be specific — name a date, number, or outcome that&apos;s unambiguous later.</li>
@@ -78,7 +81,7 @@ export function PredictionForm({
       <TrackRecordPanel result={trackRecordResult} />
 
       <div>
-        <label htmlFor="confidencePercent" className="block text-sm font-medium">
+        <label htmlFor="confidencePercent" className="block text-sm font-medium text-ink">
           Confidence: <span className="tabular-nums">{confidence}%</span>
         </label>
         <input
@@ -90,15 +93,15 @@ export function PredictionForm({
           step={1}
           value={confidence}
           onChange={(e) => setConfidence(Number(e.target.value))}
-          className="mt-2 w-full"
+          className="mt-2 w-full accent-accent"
         />
         {state.fieldErrors?.confidencePercent && (
-          <p className="mt-1 text-sm text-red-600">{state.fieldErrors.confidencePercent[0]}</p>
+          <p className="mt-1 text-sm text-danger">{state.fieldErrors.confidencePercent[0]}</p>
         )}
       </div>
 
       <div>
-        <label htmlFor="resolutionDate" className="block text-sm font-medium">
+        <label htmlFor="resolutionDate" className="block text-sm font-medium text-ink">
           Resolution date
         </label>
         <input
@@ -107,35 +110,37 @@ export function PredictionForm({
           type="date"
           required
           min={minResolutionDate}
-          className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
+          className={inputClasses("mt-1")}
         />
         {state.fieldErrors?.resolutionDate && (
-          <p className="mt-1 text-sm text-red-600">{state.fieldErrors.resolutionDate[0]}</p>
+          <p className="mt-1 text-sm text-danger">{state.fieldErrors.resolutionDate[0]}</p>
         )}
       </div>
 
       <div>
-        <span className="block text-sm font-medium">This prediction is about</span>
+        <span className="block text-sm font-medium text-ink">This prediction is about</span>
         <div className="mt-1 flex gap-2">
           <button
             type="button"
             onClick={() => setPredictionKind("self")}
-            className={`rounded-md border px-3 py-1.5 text-sm ${
+            className={cx(
+              "rounded-xl border px-3 py-1.5 text-sm transition-colors",
               predictionKind === "self"
-                ? "border-zinc-900 bg-zinc-900 text-white dark:border-white dark:bg-white dark:text-zinc-900"
-                : "border-zinc-300 dark:border-zinc-700"
-            }`}
+                ? "border-accent bg-accent text-white"
+                : "border-border text-ink-secondary hover:bg-surface",
+            )}
           >
             Myself
           </button>
           <button
             type="button"
             onClick={() => setPredictionKind("world")}
-            className={`rounded-md border px-3 py-1.5 text-sm ${
+            className={cx(
+              "rounded-xl border px-3 py-1.5 text-sm transition-colors",
               predictionKind === "world"
-                ? "border-zinc-900 bg-zinc-900 text-white dark:border-white dark:bg-white dark:text-zinc-900"
-                : "border-zinc-300 dark:border-zinc-700"
-            }`}
+                ? "border-accent bg-accent text-white"
+                : "border-border text-ink-secondary hover:bg-surface",
+            )}
           >
             The world
           </button>
@@ -144,37 +149,37 @@ export function PredictionForm({
       </div>
 
       <div>
-        <label htmlFor="reasoning" className="block text-sm font-medium">
-          Why do you think so? <span className="text-zinc-400">(optional)</span>
+        <label htmlFor="reasoning" className="block text-sm font-medium text-ink">
+          Why do you think so? <span className="text-ink-tertiary">(optional)</span>
         </label>
         <textarea
           id="reasoning"
           name="reasoning"
           rows={2}
           placeholder="The contractor confirmed the schedule last week."
-          className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
+          className={inputClasses("mt-1")}
         />
       </div>
 
       <div>
-        <label htmlFor="planOrDisconfirm" className="block text-sm font-medium">
-          {secondReasoningLabel} <span className="text-zinc-400">(optional)</span>
+        <label htmlFor="planOrDisconfirm" className="block text-sm font-medium text-ink">
+          {secondReasoningLabel} <span className="text-ink-tertiary">(optional)</span>
         </label>
         <textarea
           id="planOrDisconfirm"
           name="planOrDisconfirm"
           rows={2}
           placeholder={secondReasoningPlaceholder}
-          className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
+          className={inputClasses("mt-1")}
         />
       </div>
 
-      {state.formError && <p className="text-sm text-red-600">{state.formError}</p>}
+      {state.formError && <p className="text-sm text-danger">{state.formError}</p>}
 
       <button
         type="submit"
         disabled={pending}
-        className="rounded-md bg-zinc-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-zinc-900"
+        className={buttonVariants("primary", { className: "disabled:opacity-50" })}
       >
         {pending ? "Saving…" : "Save prediction"}
       </button>

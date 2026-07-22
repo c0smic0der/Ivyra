@@ -1,16 +1,15 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { db, schema } from "@/db";
 import { createClient } from "@/lib/supabase/server";
+import { buildInsightsViewModel, type InsightsInput } from "@/lib/insights/insightsCore";
+import { BIAS_UNLOCK_N } from "@/lib/scoring";
+import { Card } from "@/components/ui/Card";
+import { buttonVariants } from "@/components/ui/button";
+import { inputClasses } from "@/components/ui/input";
+import { Header } from "@/components/Header";
 import { InstallPrompt } from "./InstallPrompt";
-
-async function signOut() {
-  "use server";
-  const supabase = await createClient();
-  await supabase.auth.signOut();
-  redirect("/login");
-}
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -45,116 +44,166 @@ export default async function DashboardPage() {
     .limit(1);
   const hasAnyPrediction = Boolean(anyPredictionRow);
 
-  return (
-    <main className="flex flex-1 justify-center p-6">
-      <div className="w-full max-w-md">
-        <div className="text-center">
-          <h1 className="text-2xl font-semibold">Dashboard</h1>
-          <p className="mt-2 text-sm text-zinc-500">
-            Signed in as <strong>{user.email}</strong>
-          </p>
-        </div>
+  // Same view-model the insights page builds — the stats strip below is a
+  // teaser of that page, not a parallel computation of its own.
+  const resolvedRows = await db
+    .select()
+    .from(schema.predictions)
+    .where(
+      and(eq(schema.predictions.userId, user.id), inArray(schema.predictions.status, ["resolved", "void"])),
+    )
+    .orderBy(asc(schema.predictions.resolvedAt));
 
-        <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center sm:gap-3">
-          <Link
-            href="/predictions/new"
-            className="w-full rounded-md bg-zinc-900 px-4 py-2 text-center text-sm font-medium text-white sm:w-auto dark:bg-white dark:text-zinc-900"
-          >
-            New prediction
-          </Link>
-          <Link
-            href="/insights"
-            className="w-full rounded-md border border-zinc-300 px-4 py-2 text-center text-sm font-medium hover:bg-zinc-100 sm:w-auto dark:border-zinc-700 dark:hover:bg-zinc-900"
-          >
-            Insights
-          </Link>
-          <form action={signOut} className="w-full sm:w-auto">
-            <button
-              type="submit"
-              className="w-full rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium hover:bg-zinc-100 sm:w-auto dark:border-zinc-700 dark:hover:bg-zinc-900"
-            >
-              Sign out
+  const insightsInputs: InsightsInput[] = resolvedRows.map((row) => ({
+    confidence: Number(row.confidence),
+    outcome: row.outcome,
+    status: row.status,
+    resolvedAt: row.resolvedAt!,
+    category: row.category,
+    reasoningType: row.reasoningType,
+  }));
+
+  const vm = buildInsightsViewModel(insightsInputs, new Date());
+
+  return (
+    <>
+      <Header />
+      <main className="flex flex-1 justify-center p-6">
+        <div className="w-full max-w-4xl">
+          <h1 className="text-3xl font-semibold tracking-tight text-ink">Dashboard</h1>
+
+          {/* Quick capture — fast on-ramp into the real capture flow, not a fork of it. */}
+          <form action="/predictions/new" method="GET" className="mt-8 flex flex-col gap-2 sm:flex-row">
+            <input
+              type="text"
+              name="draft"
+              required
+              placeholder="What do you think will happen?"
+              className={inputClasses("flex-1")}
+            />
+            <button type="submit" className={buttonVariants("primary")}>
+              Log it →
             </button>
           </form>
-        </div>
+          <Link href="/predictions/new" className="mt-2 inline-block text-xs text-ink-tertiary hover:underline">
+            Prefer the full form?
+          </Link>
 
-        <InstallPrompt hasAnyPrediction={hasAnyPrediction} />
+          <InstallPrompt hasAnyPrediction={hasAnyPrediction} />
 
-        {openPredictions.length > 0 && (
-          <section className="mt-10">
-            <h2 className="text-sm font-medium text-zinc-500">Due for resolution</h2>
+          {/* Stats strip — a teaser of the insights page, not a copy of it. */}
+          <Card className="mt-8">
+            {vm.n === 0 ? (
+              <p className="text-sm text-ink-secondary">
+                Resolve your first prediction to start tracking your calibration.
+              </p>
+            ) : (
+              <>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div>
+                    <p className="text-2xl font-semibold tabular-nums text-ink">
+                      {vm.runningBrier.value!.toFixed(2)}
+                    </p>
+                    <p className="mt-0.5 text-xs text-ink-tertiary">Running Brier</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-semibold tabular-nums text-ink">
+                      {vm.bias.unlocked
+                        ? `${vm.bias.value! >= 0 ? "+" : ""}${Math.round(vm.bias.value! * 100)}`
+                        : `${vm.n}/${BIAS_UNLOCK_N}`}
+                    </p>
+                    <p className="mt-0.5 text-xs text-ink-tertiary">Bias score</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-semibold tabular-nums text-ink">{vm.n}</p>
+                    <p className="mt-0.5 text-xs text-ink-tertiary">Resolved</p>
+                  </div>
+                </div>
+                <p className="mt-4 text-sm text-ink-secondary">
+                  {vm.bias.unlocked ? vm.bias.sentence : vm.bias.unlockSentence}
+                </p>
+              </>
+            )}
+            <Link href="/insights" className="mt-4 inline-block text-sm font-medium text-accent hover:underline">
+              View insights →
+            </Link>
+          </Card>
+
+          {/* Due for resolution — the primary return-visit driver; always shown. */}
+          <section className="mt-12">
+            <h2 className="text-base font-semibold text-ink">Due for resolution</h2>
             {dueForResolution.length > 0 ? (
-              <ul className="mt-2 flex flex-col gap-2">
+              <ul className="mt-3 flex flex-col gap-2">
                 {dueForResolution.map((row) => (
                   <li key={row.id}>
                     <Link
                       href={`/predictions/${row.id}/resolve`}
-                      className="flex items-center justify-between gap-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm hover:bg-amber-100 dark:border-amber-800/60 dark:bg-amber-950/30 dark:hover:bg-amber-950/50"
+                      className="flex items-center justify-between gap-3 rounded-xl border border-warning/30 bg-warning-soft p-4 text-sm transition-colors hover:border-warning/50"
                     >
                       <span className="min-w-0">
-                        <span className="block">{row.text}</span>
-                        <span className="mt-1 block text-xs text-zinc-500">
+                        <span className="block text-ink">{row.text}</span>
+                        <span className="mt-1 block text-xs text-ink-tertiary">
                           {Math.round(Number(row.confidence) * 100)}% · due {row.resolutionDate}
                         </span>
                       </span>
-                      <span className="shrink-0 rounded-md bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white dark:bg-white dark:text-zinc-900">
+                      <span className={buttonVariants("primary", { size: "sm", className: "shrink-0" })}>
                         Resolve
                       </span>
                     </Link>
                   </li>
                 ))}
               </ul>
-            ) : (
-              <p className="mt-2 text-sm text-zinc-400">
+            ) : upcoming.length > 0 ? (
+              <p className="mt-3 text-sm text-ink-tertiary">
                 Nothing due yet — your next resolution date is {upcoming[0]!.resolutionDate}.
+              </p>
+            ) : (
+              <p className="mt-3 text-sm text-ink-tertiary">
+                Nothing due — you&apos;ll be reminded here when a resolution date arrives.
               </p>
             )}
           </section>
-        )}
 
-        <section className="mt-10">
-          <h2 className="text-sm font-medium text-zinc-500">Open predictions</h2>
-          {!hasAnyPrediction ? (
-            <div className="mt-2 rounded-md border border-dashed border-zinc-300 p-4 text-center text-sm text-zinc-500 dark:border-zinc-700">
-              <p>Nothing here yet — every calibration curve starts with one prediction.</p>
-              <Link
-                href="/predictions/new"
-                className="mt-2 inline-block font-medium text-zinc-900 underline dark:text-zinc-50"
-              >
-                Log your first prediction
-              </Link>
-            </div>
-          ) : upcoming.length === 0 ? (
-            <p className="mt-2 text-sm text-zinc-400">
-              {openPredictions.length > 0 ? (
-                "Nothing else open — resolve the ones above."
-              ) : (
-                <>
-                  Nothing open right now — see how you&apos;ve done in{" "}
-                  <Link href="/insights" className="underline">
-                    Insights
-                  </Link>
-                  .
-                </>
-              )}
-            </p>
-          ) : (
-            <ul className="mt-2 flex flex-col gap-2">
-              {upcoming.map((row) => (
-                <li
-                  key={row.id}
-                  className="rounded-md border border-zinc-200 p-3 text-sm dark:border-zinc-800"
-                >
-                  <p>{row.text}</p>
-                  <p className="mt-1 text-xs text-zinc-500">
-                    {Math.round(Number(row.confidence) * 100)}% · resolves {row.resolutionDate}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      </div>
-    </main>
+          <section className="mt-12">
+            <h2 className="text-base font-semibold text-ink">Open predictions</h2>
+            {!hasAnyPrediction ? (
+              <Card as="div" className="mt-3 border-dashed text-center text-sm text-ink-secondary">
+                <p>Nothing here yet — every calibration curve starts with one prediction.</p>
+                <Link href="/predictions/new" className="mt-2 inline-block font-medium text-accent hover:underline">
+                  Log your first prediction
+                </Link>
+              </Card>
+            ) : upcoming.length === 0 ? (
+              <p className="mt-3 text-sm text-ink-tertiary">
+                {openPredictions.length > 0 ? (
+                  "Nothing else open — resolve the ones above."
+                ) : (
+                  <>
+                    Nothing open right now — see how you&apos;ve done in{" "}
+                    <Link href="/insights" className="text-accent hover:underline">
+                      Insights
+                    </Link>
+                    .
+                  </>
+                )}
+              </p>
+            ) : (
+              <ul className="mt-3 flex flex-col gap-2">
+                {upcoming.map((row) => (
+                  <li key={row.id}>
+                    <Card as="div" className="text-sm">
+                      <p className="text-ink">{row.text}</p>
+                      <p className="mt-1 text-xs text-ink-tertiary">
+                        {Math.round(Number(row.confidence) * 100)}% · resolves {row.resolutionDate}
+                      </p>
+                    </Card>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </div>
+      </main>
+    </>
   );
 }

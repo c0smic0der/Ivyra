@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useSyncExternalStore } from "react";
+import { buttonVariants } from "@/components/ui/button";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
@@ -77,23 +78,13 @@ export function InstallPrompt({ hasAnyPrediction }: { hasAnyPrediction: boolean 
   }
 
   return (
-    <div className="mt-6 flex flex-col gap-2 rounded-md border border-zinc-200 bg-zinc-50 p-3 text-sm sm:flex-row sm:items-center sm:justify-between dark:border-zinc-800 dark:bg-zinc-900">
-      <p className="text-zinc-600 dark:text-zinc-400">
-        Install Caliber for quicker access to your predictions.
-      </p>
+    <div className="mt-8 flex flex-col gap-2 rounded-xl border border-border bg-canvas p-4 text-sm shadow-[var(--shadow-card)] sm:flex-row sm:items-center sm:justify-between">
+      <p className="text-ink-secondary">Install Calra for quicker access to your predictions.</p>
       <div className="flex shrink-0 gap-2">
-        <button
-          type="button"
-          onClick={persistDismissed}
-          className="text-xs text-zinc-500 hover:underline"
-        >
+        <button type="button" onClick={persistDismissed} className={buttonVariants("ghost", { size: "sm" })}>
           Not now
         </button>
-        <button
-          type="button"
-          onClick={handleInstall}
-          className="rounded-md bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white dark:bg-white dark:text-zinc-900"
-        >
+        <button type="button" onClick={handleInstall} className={buttonVariants("primary", { size: "sm" })}>
           Install
         </button>
       </div>

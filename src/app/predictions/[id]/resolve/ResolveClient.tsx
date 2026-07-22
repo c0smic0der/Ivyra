@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { useState } from "react";
 import { resolvePrediction, type ResolveResult } from "./actions";
+import { Card, CardLabel } from "@/components/ui/Card";
+import { buttonVariants } from "@/components/ui/button";
+import { inputClasses } from "@/components/ui/input";
 
 type PostmortemState = "idle" | "streaming" | "done" | "error";
 
@@ -46,40 +49,39 @@ export function ResolveClient({ id }: { id: string }) {
   // --- resolved: show the deterministic score, then stream the narrative -----
   if (result?.ok) {
     return (
-      <section className="mt-6">
-        <div className="rounded-md border border-zinc-200 p-4 dark:border-zinc-800">
+      <section className="mt-8">
+        <Card>
           {result.isVoid ? (
-            <p className="text-sm text-zinc-500">Voided — excluded from your score.</p>
+            <p className="text-sm text-ink-secondary">Voided — excluded from your score.</p>
           ) : (
             <>
-              <p className="text-3xl font-semibold tabular-nums">{result.brier?.toFixed(2)}</p>
-              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{result.sentence}</p>
+              <p className="text-4xl font-semibold tabular-nums text-ink">
+                {result.brier?.toFixed(2)}
+              </p>
+              <p className="mt-1 text-sm text-ink-secondary">{result.sentence}</p>
               {result.runningBrier !== null && (
-                <p className="mt-2 text-xs text-zinc-500">
+                <p className="mt-2 text-xs text-ink-tertiary">
                   Running Brier: {result.runningBrier.toFixed(2)}
                 </p>
               )}
             </>
           )}
-        </div>
+        </Card>
 
         {result.canPostmortem && (
-          <div className="mt-4 rounded-md border border-zinc-200 p-4 text-sm dark:border-zinc-800">
-            <h2 className="text-xs font-medium uppercase tracking-wide text-zinc-400">Post-mortem</h2>
+          <Card className="mt-4">
+            <CardLabel>Post-mortem</CardLabel>
             {pmState === "streaming" && postmortem === "" ? (
-              <p className="mt-2 text-zinc-400">Analyzing…</p>
+              <p className="mt-2 text-ink-tertiary">Analyzing…</p>
             ) : pmState === "error" ? (
-              <p className="mt-2 text-zinc-400">AI analysis unavailable right now.</p>
+              <p className="mt-2 text-ink-tertiary">AI analysis unavailable right now.</p>
             ) : (
-              <p className="mt-2 whitespace-pre-wrap text-zinc-700 dark:text-zinc-300">{postmortem}</p>
+              <p className="mt-2 whitespace-pre-wrap text-sm text-ink-secondary">{postmortem}</p>
             )}
-          </div>
+          </Card>
         )}
 
-        <Link
-          href="/dashboard"
-          className="mt-6 inline-block rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-zinc-900"
-        >
+        <Link href="/dashboard" className={buttonVariants("primary", { className: "mt-6 inline-flex" })}>
           Back to dashboard
         </Link>
       </section>
@@ -89,29 +91,29 @@ export function ResolveClient({ id }: { id: string }) {
   // --- error (e.g. already resolved elsewhere) ------------------------------
   if (result && !result.ok) {
     return (
-      <section className="mt-6 rounded-md border border-zinc-200 p-4 text-sm dark:border-zinc-800">
-        <p className="text-zinc-600 dark:text-zinc-400">
+      <Card as="section" className="mt-8">
+        <p className="text-sm text-ink-secondary">
           {result.error === "already_resolved"
             ? "This prediction was already resolved."
             : "Something went wrong resolving this prediction."}
         </p>
-        <Link href="/dashboard" className="mt-3 inline-block text-zinc-500 hover:underline">
+        <Link href="/dashboard" className={buttonVariants("ghost", { className: "mt-3 inline-block" })}>
           ← Back to dashboard
         </Link>
-      </section>
+      </Card>
     );
   }
 
   // --- open: the resolution controls ----------------------------------------
   return (
-    <section className="mt-6">
-      <p className="text-sm font-medium">What happened?</p>
+    <section className="mt-8">
+      <p className="text-sm font-medium text-ink">What happened?</p>
       <div className="mt-3 flex gap-2">
         <button
           type="button"
           disabled={pending}
           onClick={() => choose("yes")}
-          className="flex-1 rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+          className="flex-1 rounded-xl bg-success px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90 disabled:opacity-50"
         >
           Yes
         </button>
@@ -119,7 +121,7 @@ export function ResolveClient({ id }: { id: string }) {
           type="button"
           disabled={pending}
           onClick={() => choose("no")}
-          className="flex-1 rounded-md bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-50"
+          className="flex-1 rounded-xl bg-danger px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90 disabled:opacity-50"
         >
           No
         </button>
@@ -127,14 +129,14 @@ export function ResolveClient({ id }: { id: string }) {
           type="button"
           disabled={pending}
           onClick={() => choose("void")}
-          className="flex-1 rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-900"
+          className={buttonVariants("secondary", { className: "flex-1 disabled:opacity-50" })}
         >
           Void
         </button>
       </div>
 
       <label className="mt-4 block text-sm">
-        <span className="text-zinc-500">What actually happened? (optional)</span>
+        <span className="text-ink-secondary">What actually happened? (optional)</span>
         <input
           type="text"
           value={note}
@@ -142,7 +144,7 @@ export function ResolveClient({ id }: { id: string }) {
           disabled={pending}
           maxLength={280}
           placeholder="The permit came back two weeks late."
-          className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+          className={inputClasses("mt-1")}
         />
       </label>
     </section>

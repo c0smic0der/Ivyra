@@ -5,11 +5,11 @@ export function TrackRecordPanel({ result }: { result: TrackRecordPanelResult | 
 
   if (result.kind === "track_record") {
     return (
-      <div className="rounded-md border border-zinc-300 bg-zinc-50 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900">
+      <div className="rounded-xl border border-border bg-surface px-3 py-2 text-sm text-ink">
         <p>{result.sentence}</p>
-        <details className="mt-2 text-zinc-500">
+        <details className="mt-2 text-ink-secondary">
           <summary className="cursor-pointer">Show matched predictions</summary>
-          <ul className="mt-2 list-disc pl-5 text-zinc-600 dark:text-zinc-400">
+          <ul className="mt-2 list-disc pl-5 text-ink-secondary">
             {result.matches.map((match, i) => (
               <li key={i}>
                 {match.text} — {match.confidencePercent}% confidence,{" "}
@@ -23,7 +23,7 @@ export function TrackRecordPanel({ result }: { result: TrackRecordPanelResult | 
   }
 
   return (
-    <div className="rounded-md border border-zinc-300 bg-zinc-50 px-3 py-2 text-sm text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400">
+    <div className="rounded-xl border border-border bg-surface px-3 py-2 text-sm text-ink-secondary">
       {result.sentence}
     </div>
   );

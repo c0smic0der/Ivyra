@@ -32,10 +32,11 @@ function CalibrationTooltip({
   if (!active || !payload?.length) return null;
   const point = payload[0]!.payload;
   return (
-    <div className="rounded-md border border-zinc-200 bg-white px-2 py-1 text-xs shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
-      <p>Stated {Math.round(point.x * 100)}%</p>
-      <p>Actual {Math.round(point.y * 100)}%</p>
-      <p className="text-zinc-500">n={point.n}</p>
+    <div className="rounded-xl border border-border bg-canvas px-3 py-2 text-xs shadow-[var(--shadow-card)]">
+      <p className="font-medium text-ink">
+        Stated {Math.round(point.x * 100)}% · Actual {Math.round(point.y * 100)}%
+      </p>
+      <p className="mt-0.5 text-ink-tertiary">n={point.n}</p>
     </div>
   );
 }
@@ -44,14 +45,15 @@ export function CalibrationChart({ points }: { points: CalibrationPoint[] }) {
   return (
     <ResponsiveContainer width="100%" height={260}>
       <ComposedChart margin={{ top: 8, right: 12, bottom: 8, left: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" className="stroke-zinc-200 dark:stroke-zinc-800" />
+        <CartesianGrid strokeDasharray="3 3" className="stroke-border-subtle" />
         <XAxis
           dataKey="x"
           type="number"
           domain={[0, 1]}
           ticks={TICKS}
           tickFormatter={(v: number) => `${Math.round(v * 100)}%`}
-          className="text-xs fill-zinc-500"
+          className="text-xs fill-ink-tertiary"
+          tickLine={false}
         />
         <YAxis
           dataKey="y"
@@ -59,20 +61,38 @@ export function CalibrationChart({ points }: { points: CalibrationPoint[] }) {
           domain={[0, 1]}
           ticks={TICKS}
           tickFormatter={(v: number) => `${Math.round(v * 100)}%`}
-          className="text-xs fill-zinc-500"
+          className="text-xs fill-ink-tertiary"
+          tickLine={false}
         />
         <Tooltip content={<CalibrationTooltip />} />
         <Line
           data={DIAGONAL}
           dataKey="y"
           stroke="currentColor"
-          className="text-zinc-400 dark:text-zinc-600"
+          className="text-ink-tertiary/40"
           strokeDasharray="4 4"
+          strokeWidth={1.5}
+          dot={false}
+          isAnimationActive={false}
+        />
+        <Line
+          data={points}
+          dataKey="y"
+          type="monotone"
+          stroke="currentColor"
+          className="text-accent"
           strokeWidth={2}
           dot={false}
           isAnimationActive={false}
         />
-        <Scatter data={points} dataKey="y" fill="#3b82f6" r={5} isAnimationActive={false} />
+        <Scatter
+          data={points}
+          dataKey="y"
+          fill="currentColor"
+          className="text-accent"
+          r={5}
+          isAnimationActive={false}
+        />
       </ComposedChart>
     </ResponsiveContainer>
   );

@@ -1,22 +1,15 @@
 "use client";
 
-// The only module that touches localStorage for the onboarding flag. Must
-// only ever be called from a useEffect/event handler, never during render.
-const KEY = "caliber:onboarded";
+// Cookie (not localStorage) so the server component in onboarding/page.tsx can
+// read it and redirect before ever rendering — no client-side flash/delay.
+import { ONBOARDED_COOKIE_NAME } from "./onboardedCookie";
 
-export function isOnboarded(): boolean {
-  try {
-    return window.localStorage.getItem(KEY) === "1";
-  } catch {
-    // Never loop a user through onboarding because storage is unavailable.
-    return true;
-  }
-}
+const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
 
 export function markOnboarded(): void {
   try {
-    window.localStorage.setItem(KEY, "1");
+    document.cookie = `${ONBOARDED_COOKIE_NAME}=1; path=/; max-age=${ONE_YEAR_SECONDS}; SameSite=Lax`;
   } catch {
-    // Best-effort; worst case they see onboarding again next login.
+    // Best-effort; worst case they see onboarding again next visit.
   }
 }

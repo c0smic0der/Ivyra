@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { buttonVariants } from "@/components/ui/button";
+import { inputClasses } from "@/components/ui/input";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -38,15 +40,15 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex flex-1 items-center justify-center p-6">
+    <main className="flex flex-1 items-center justify-center bg-canvas p-6">
       <div className="w-full max-w-sm">
-        <h1 className="text-2xl font-semibold">Sign in to Caliber</h1>
-        <p className="mt-2 text-sm text-zinc-500">
+        <h1 className="text-2xl font-semibold tracking-tight text-ink">Sign in to Caliber</h1>
+        <p className="mt-2 text-sm text-ink-secondary">
           Enter your email and we&apos;ll send you a magic link.
         </p>
 
         {status === "sent" ? (
-          <p className="mt-6 rounded-md bg-green-50 p-4 text-sm text-green-800 dark:bg-green-950 dark:text-green-200">
+          <p className="mt-6 rounded-xl border border-success/20 bg-success/5 p-4 text-sm text-success">
             Check your inbox — we sent a sign-in link to <strong>{email}</strong>.
           </p>
         ) : (
@@ -58,16 +60,16 @@ export default function LoginPage() {
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
+              className={inputClasses()}
             />
             <button
               type="submit"
               disabled={status === "sending"}
-              className="rounded-md bg-zinc-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-zinc-900"
+              className={buttonVariants("primary", { className: "disabled:opacity-50" })}
             >
               {status === "sending" ? "Sending…" : "Send magic link"}
             </button>
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {error && <p className="text-sm text-danger">{error}</p>}
           </form>
         )}
       </div>
