@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate"
+    "db:migrate": "drizzle-kit migrate",
+    "db:seed-dev": "node scripts/seed-dev.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.112.5",
@@ -21,6 +22,7 @@
     "postgres": "^3.4.9",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "recharts": "^3.10.0",
     "resend": "^6.18.0",
     "server-only": "^0.0.1",
     "zod": "^4.4.3"

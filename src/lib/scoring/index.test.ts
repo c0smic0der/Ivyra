@@ -1,13 +1,18 @@
 import { describe, expect, it } from "vitest";
 import {
   BASELINE_BRIER,
+  BIAS_UNLOCK_N,
+  biasByGroup,
   biasScore,
   biasSentence,
   brierScore,
   brierSentence,
   calibrationBuckets,
+  CURVE_UNLOCK_N,
   ece,
+  PROGRESS_UNLOCK_N,
   rollingBrier,
+  rollingBrierTrend,
   runningBrier,
   type Scorable,
 } from "@/lib/scoring";
@@ -248,5 +253,126 @@ describe("directional sentences (deterministic, no AI)", () => {
 
   it("biasSentence reports near-zero bias as well calibrated", () => {
     expect(biasSentence(0.01)).toMatch(/well calibrated/i);
+  });
+});
+
+describe("insights unlock thresholds", () => {
+  it("BIAS_UNLOCK_N / CURVE_UNLOCK_N / PROGRESS_UNLOCK_N are the documented constants", () => {
+    expect(BIAS_UNLOCK_N).toBe(10);
+    expect(CURVE_UNLOCK_N).toBe(30);
+    expect(PROGRESS_UNLOCK_N).toBe(25);
+  });
+});
+
+describe("biasByGroup", () => {
+  interface Grouped extends Scorable {
+    category: string | null;
+  }
+  const g = (confidence: number, outcome: boolean | null, category: string | null, status?: Scorable["status"]): Grouped => ({
+    confidence,
+    outcome,
+    status,
+    category,
+  });
+  const byCategory = (preds: Grouped[]) => biasByGroup(preds, (pred) => pred.category);
+
+  it("groups correctly by key", () => {
+    const preds = [
+      g(0.9, true, "work"),
+      g(0.9, false, "work"),
+      g(0.6, true, "health"),
+      g(0.6, true, "health"),
+    ];
+    const rows = byCategory(preds);
+    expect(rows).toHaveLength(2);
+    const work = rows.find((r) => r.key === "work")!;
+    expect(work.n).toBe(2);
+    expect(work.bias).toBeCloseTo(0.4, 10); // mean conf 0.9, hit rate 0.5
+
+    const health = rows.find((r) => r.key === "health")!;
+    expect(health.n).toBe(2);
+    expect(health.bias).toBeCloseTo(-0.4, 10); // mean conf 0.6, hit rate 1.0
+  });
+
+  it("excludes predictions with a null key", () => {
+    const preds = [g(0.9, true, "work"), g(0.5, true, null)];
+    const rows = byCategory(preds);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.key).toBe("work");
+  });
+
+  it("drops a group whose members are all open/void (n=0, bias null)", () => {
+    const preds = [g(0.9, null, "work", "open"), g(0.5, null, "work", "void")];
+    expect(byCategory(preds)).toEqual([]);
+  });
+
+  it("n counts resolved-non-void members only, not raw group size", () => {
+    // 3-row "work" group: 1 open, 1 void, 1 resolved.
+    const preds = [g(0.9, null, "work", "open"), g(0.5, null, "work", "void"), g(0.7, true, "work")];
+    const rows = byCategory(preds);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.n).toBe(1);
+    expect(rows[0]!.bias).toBeCloseTo(0.7 - 1, 10);
+  });
+
+  it("sorts by n descending", () => {
+    const preds = [
+      g(0.9, true, "small"),
+      g(0.9, true, "big"),
+      g(0.9, true, "big"),
+      g(0.9, true, "big"),
+    ];
+    const rows = byCategory(preds);
+    expect(rows.map((r) => r.key)).toEqual(["big", "small"]);
+  });
+
+  it("returns [] on empty input", () => {
+    expect(byCategory([])).toEqual([]);
+  });
+});
+
+describe("rollingBrierTrend (window = 20)", () => {
+  const p = (confidence: number, outcome: boolean | null, status?: Scorable["status"]): Scorable => ({
+    confidence,
+    outcome,
+    status,
+  });
+
+  it("equals rollingBrier of each chronological prefix", () => {
+    const preds = [p(0.9, true), p(0.4, true), p(0.8, true)];
+    const trend = rollingBrierTrend(preds, 20);
+    expect(trend).toEqual([
+      { n: 1, value: rollingBrier([preds[0]!], 20) },
+      { n: 2, value: rollingBrier([preds[0]!, preds[1]!], 20) },
+      { n: 3, value: rollingBrier(preds, 20) },
+    ]);
+  });
+
+  it("with a small window, later points reflect only the trailing window", () => {
+    // 4 resolved: window=2 means the 4th point averages only preds[2..3].
+    const preds = [p(0.0, true), p(0.0, true), p(1.0, true), p(1.0, true)];
+    const trend = rollingBrierTrend(preds, 2);
+    expect(trend[3]!.value).toBeCloseTo(0.0, 10); // last two are perfect (conf 1, YES)
+    expect(trend[3]!.n).toBe(4);
+  });
+
+  it("a void/open interleaved is skipped and doesn't consume an n slot", () => {
+    const preds = [p(0.9, true), p(0.99, null, "void"), p(0.4, true), p(0.5, null, "open"), p(0.8, true)];
+    const trend = rollingBrierTrend(preds, 20);
+    expect(trend.map((pt) => pt.n)).toEqual([1, 2, 3]);
+  });
+
+  it("length equals resolvedNonVoid(preds).length", () => {
+    const preds = [p(0.9, true), p(0.99, null, "void"), p(0.4, true)];
+    expect(rollingBrierTrend(preds, 20)).toHaveLength(2);
+  });
+
+  it("returns [] on empty input", () => {
+    expect(rollingBrierTrend([], 20)).toEqual([]);
+  });
+
+  it("a single resolved prediction yields one point equal to its own Brier", () => {
+    const trend = rollingBrierTrend([p(0.9, true)], 20);
+    expect(trend).toEqual([{ n: 1, value: brierScore(0.9, true) }]);
   });
 });

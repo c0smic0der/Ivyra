@@ -44,6 +44,13 @@ export interface Bucket {
 /** The Brier of an always-50% forecaster — the reference every stat compares to. */
 export const BASELINE_BRIER = 0.25;
 
+/** Resolutions needed before the Bias score headline is meaningful (insights). */
+export const BIAS_UNLOCK_N = 10;
+/** Resolutions needed before the calibration curve unlocks (insights). */
+export const CURVE_UNLOCK_N = 30;
+/** Resolutions needed before the rolling-Brier progress chart unlocks (insights). */
+export const PROGRESS_UNLOCK_N = 25;
+
 const NUM_BUCKETS = 10;
 
 // --- internals -------------------------------------------------------------
@@ -55,9 +62,9 @@ const NUM_BUCKETS = 10;
  * count that must share the Brier's denominator) route through this predicate
  * instead of re-declaring it and risking drift.
  */
-export function resolvedNonVoid(preds: Scorable[]): Array<Scorable & { outcome: boolean }> {
+export function resolvedNonVoid<T extends Scorable>(preds: T[]): Array<T & { outcome: boolean }> {
   return preds.filter(
-    (p): p is Scorable & { outcome: boolean } =>
+    (p): p is T & { outcome: boolean } =>
       p.status !== "void" && p.status !== "open" && p.outcome !== null,
   );
 }
@@ -113,6 +120,30 @@ export function rollingBrier(preds: Scorable[], window = 20): number | null {
   return mean(recent.map((p) => brierScore(p.confidence, p.outcome)));
 }
 
+/** One point of the rolling-Brier trajectory: `value` as of the `n`th resolution. */
+export interface RollingPoint {
+  /** 1-based count of resolved, non-void predictions up to and including this point. */
+  n: number;
+  value: number;
+}
+
+/**
+ * The Brier-over-time trajectory the progress chart plots: `rollingBrier` of
+ * every chronological prefix of the resolved, non-void predictions. Early
+ * points are effectively a running mean (fewer than `window` are available);
+ * later points settle into a true trailing window. Composed directly from
+ * `rollingBrier` rather than re-deriving a trailing-mean, so there is only
+ * ever one implementation of "mean of a trailing window" in this module.
+ * Input order is treated as chronological, same assumption as `rollingBrier`.
+ */
+export function rollingBrierTrend(preds: Scorable[], window = 20): RollingPoint[] {
+  const resolved = resolvedNonVoid(preds);
+  return resolved.map((_, i) => ({
+    n: i + 1,
+    value: rollingBrier(resolved.slice(0, i + 1), window)!,
+  }));
+}
+
 /**
  * Bias: mean stated confidence − actual hit rate over resolved, non-void
  * predictions. Positive ⇒ overconfident, negative ⇒ underconfident. This is
@@ -125,6 +156,44 @@ export function biasScore(preds: Scorable[]): number | null {
   const meanConfidence = mean(resolved.map((p) => p.confidence));
   const hitRate = mean(resolved.map((p) => (p.outcome ? 1 : 0)));
   return meanConfidence - hitRate;
+}
+
+/** Bias score for one group (e.g. one category, one reasoning type). */
+export interface GroupBias {
+  key: string;
+  /** Resolved, non-void count backing `bias` — the same population it was averaged over. */
+  n: number;
+  bias: number;
+}
+
+/**
+ * `biasScore`, computed separately per group. Predictions with a null key are
+ * excluded — there's nothing to attribute an ungrouped prediction to. `n` is
+ * each group's resolved-non-void count (not raw group size — a void or still-
+ * open row can carry a key too, and `n` must match the population `bias` was
+ * actually averaged over). Groups with no resolved-non-void members (bias
+ * would be null) are dropped. Sorted by `n` descending.
+ */
+export function biasByGroup<T extends Scorable>(
+  preds: T[],
+  keyFn: (pred: T) => string | null,
+): GroupBias[] {
+  const groups = new Map<string, T[]>();
+  for (const pred of preds) {
+    const key = keyFn(pred);
+    if (key === null) continue;
+    const group = groups.get(key);
+    if (group) group.push(pred);
+    else groups.set(key, [pred]);
+  }
+
+  const rows: GroupBias[] = [];
+  for (const [key, group] of groups) {
+    const bias = biasScore(group);
+    if (bias === null) continue;
+    rows.push({ key, n: resolvedNonVoid(group).length, bias });
+  }
+  return rows.sort((a, b) => b.n - a.n);
 }
 
 /**
