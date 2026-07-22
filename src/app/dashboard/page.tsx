@@ -1,4 +1,7 @@
+import { and, asc, eq } from "drizzle-orm";
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { db, schema } from "@/db";
 import { createClient } from "@/lib/supabase/server";
 
 async function signOut() {
@@ -20,21 +23,61 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
+  const openPredictions = await db
+    .select()
+    .from(schema.predictions)
+    .where(and(eq(schema.predictions.userId, user.id), eq(schema.predictions.status, "open")))
+    .orderBy(asc(schema.predictions.resolutionDate));
+
   return (
-    <main className="flex flex-1 items-center justify-center p-6">
-      <div className="w-full max-w-md text-center">
-        <h1 className="text-2xl font-semibold">Dashboard</h1>
-        <p className="mt-2 text-sm text-zinc-500">
-          Signed in as <strong>{user.email}</strong>
-        </p>
-        <form action={signOut} className="mt-6">
-          <button
-            type="submit"
-            className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
+    <main className="flex flex-1 justify-center p-6">
+      <div className="w-full max-w-md">
+        <div className="text-center">
+          <h1 className="text-2xl font-semibold">Dashboard</h1>
+          <p className="mt-2 text-sm text-zinc-500">
+            Signed in as <strong>{user.email}</strong>
+          </p>
+        </div>
+
+        <div className="mt-6 flex justify-center gap-3">
+          <Link
+            href="/predictions/new"
+            className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-zinc-900"
           >
-            Sign out
-          </button>
-        </form>
+            New prediction
+          </Link>
+          <form action={signOut}>
+            <button
+              type="submit"
+              className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
+            >
+              Sign out
+            </button>
+          </form>
+        </div>
+
+        <section className="mt-10">
+          <h2 className="text-sm font-medium text-zinc-500">Open predictions</h2>
+          {openPredictions.length === 0 ? (
+            <p className="mt-2 text-sm text-zinc-400">
+              Nothing open yet — log your first prediction above.
+            </p>
+          ) : (
+            <ul className="mt-2 flex flex-col gap-2">
+              {openPredictions.map((row) => (
+                <li
+                  key={row.id}
+                  className="rounded-md border border-zinc-200 p-3 text-sm dark:border-zinc-800"
+                >
+                  <p>{row.text}</p>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    {Math.round(Number(row.confidence) * 100)}% · resolves {row.resolutionDate}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       </div>
     </main>
   );
