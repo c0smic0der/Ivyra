@@ -19,17 +19,29 @@ export async function countAiCallsToday(userId: string): Promise<number> {
   return result?.count ?? 0;
 }
 
+type AiCallPurpose =
+  | "enrich"
+  | "postmortem"
+  | "monthly_insight"
+  | "reference_class"
+  | "track_record_embed";
+
+function costFor(inputTokens: number, outputTokens: number): string {
+  return (
+    inputTokens * HAIKU_INPUT_COST_PER_TOKEN +
+    outputTokens * HAIKU_OUTPUT_COST_PER_TOKEN
+  ).toFixed(6);
+}
+
 export async function logAiCall(params: {
   userId: string;
   predictionId: string | null;
-  purpose: "enrich" | "postmortem" | "monthly_insight" | "reference_class" | "track_record_embed";
+  purpose: AiCallPurpose;
   model: string;
   inputTokens: number;
   outputTokens: number;
   latencyMs: number;
 }): Promise<void> {
-  const costUsd =
-    params.inputTokens * HAIKU_INPUT_COST_PER_TOKEN + params.outputTokens * HAIKU_OUTPUT_COST_PER_TOKEN;
   await db.insert(schema.aiCalls).values({
     userId: params.userId,
     predictionId: params.predictionId,
@@ -37,9 +49,55 @@ export async function logAiCall(params: {
     model: params.model,
     inputTokens: params.inputTokens,
     outputTokens: params.outputTokens,
-    costUsd: costUsd.toFixed(6),
+    costUsd: costFor(params.inputTokens, params.outputTokens),
     latencyMs: params.latencyMs,
   });
+}
+
+/**
+ * Reserve a cap slot BEFORE a long-running (streamed) call, returning the row
+ * id. Inserting up front means `countAiCallsToday` sees this call in-flight, so
+ * concurrent requests can't all pass the gate against a stale pre-call count.
+ * The row starts at 0 tokens / 0 cost; `finalizeAiCall` fills real usage when
+ * the call completes. (Narrows the TOCTOU window to the gap between the count
+ * and this insert; the fully-atomic conditional-insert cap is docs/TODO.md.)
+ */
+export async function reserveAiCall(params: {
+  userId: string;
+  predictionId: string | null;
+  purpose: AiCallPurpose;
+  model: string;
+}): Promise<string> {
+  const [row] = await db
+    .insert(schema.aiCalls)
+    .values({
+      userId: params.userId,
+      predictionId: params.predictionId,
+      purpose: params.purpose,
+      model: params.model,
+      inputTokens: 0,
+      outputTokens: 0,
+      costUsd: "0.000000",
+      latencyMs: 0,
+    })
+    .returning({ id: schema.aiCalls.id });
+  return row.id;
+}
+
+/** Fill a reserved ai_calls row with the real token counts, cost, and latency. */
+export async function finalizeAiCall(
+  id: string,
+  params: { inputTokens: number; outputTokens: number; latencyMs: number },
+): Promise<void> {
+  await db
+    .update(schema.aiCalls)
+    .set({
+      inputTokens: params.inputTokens,
+      outputTokens: params.outputTokens,
+      costUsd: costFor(params.inputTokens, params.outputTokens),
+      latencyMs: params.latencyMs,
+    })
+    .where(eq(schema.aiCalls.id, id));
 }
 
 /** Fired from actions.ts via after() — never blocks the initial row write. */

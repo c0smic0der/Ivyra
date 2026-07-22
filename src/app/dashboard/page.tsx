@@ -29,6 +29,12 @@ export default async function DashboardPage() {
     .where(and(eq(schema.predictions.userId, user.id), eq(schema.predictions.status, "open")))
     .orderBy(asc(schema.predictions.resolutionDate));
 
+  // Split on resolution_date ≤ today (the resolution_date column is a bare
+  // date, so compare against today's UTC date string, not a Date instant).
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const dueForResolution = openPredictions.filter((row) => row.resolutionDate <= todayIso);
+  const upcoming = openPredictions.filter((row) => row.resolutionDate > todayIso);
+
   return (
     <main className="flex flex-1 justify-center p-6">
       <div className="w-full max-w-md">
@@ -56,15 +62,43 @@ export default async function DashboardPage() {
           </form>
         </div>
 
+        {dueForResolution.length > 0 && (
+          <section className="mt-10">
+            <h2 className="text-sm font-medium text-zinc-500">Due for resolution</h2>
+            <ul className="mt-2 flex flex-col gap-2">
+              {dueForResolution.map((row) => (
+                <li key={row.id}>
+                  <Link
+                    href={`/predictions/${row.id}/resolve`}
+                    className="flex items-center justify-between gap-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm hover:bg-amber-100 dark:border-amber-800/60 dark:bg-amber-950/30 dark:hover:bg-amber-950/50"
+                  >
+                    <span>
+                      <span className="block">{row.text}</span>
+                      <span className="mt-1 block text-xs text-zinc-500">
+                        {Math.round(Number(row.confidence) * 100)}% · due {row.resolutionDate}
+                      </span>
+                    </span>
+                    <span className="shrink-0 rounded-md bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white dark:bg-white dark:text-zinc-900">
+                      Resolve
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
         <section className="mt-10">
           <h2 className="text-sm font-medium text-zinc-500">Open predictions</h2>
-          {openPredictions.length === 0 ? (
+          {upcoming.length === 0 ? (
             <p className="mt-2 text-sm text-zinc-400">
-              Nothing open yet — log your first prediction above.
+              {dueForResolution.length > 0
+                ? "Nothing else open — resolve the ones above."
+                : "Nothing open yet — log your first prediction above."}
             </p>
           ) : (
             <ul className="mt-2 flex flex-col gap-2">
-              {openPredictions.map((row) => (
+              {upcoming.map((row) => (
                 <li
                   key={row.id}
                   className="rounded-md border border-zinc-200 p-3 text-sm dark:border-zinc-800"

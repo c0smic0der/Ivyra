@@ -50,9 +50,12 @@ const NUM_BUCKETS = 10;
 
 /**
  * The single gate that excludes voids (and still-open predictions) EVERYWHERE.
- * Every aggregate runs through this, so exclusion is defined in exactly one place.
+ * Every aggregate runs through this, so exclusion is defined in exactly one
+ * place. Exported so callers that need the same population (e.g. a resolved
+ * count that must share the Brier's denominator) route through this predicate
+ * instead of re-declaring it and risking drift.
  */
-function resolvedNonVoid(preds: Scorable[]): Array<Scorable & { outcome: boolean }> {
+export function resolvedNonVoid(preds: Scorable[]): Array<Scorable & { outcome: boolean }> {
   return preds.filter(
     (p): p is Scorable & { outcome: boolean } =>
       p.status !== "void" && p.status !== "open" && p.outcome !== null,

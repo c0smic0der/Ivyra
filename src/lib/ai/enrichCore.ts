@@ -9,7 +9,14 @@ import { enrichOutputSchema, enrichTool, type EnrichOutput } from "@/lib/ai/enri
 
 export const DAILY_AI_CALL_CAP = 25;
 
-/** Pure boundary check. */
+/**
+ * Pure boundary check.
+ *
+ * TODO(atomic-cap): this read-then-act gate has a TOCTOU race — concurrent
+ * requests all pass against a stale pre-call count. The post-mortem route
+ * mitigates it by reserving the ai_calls row before streaming; the full fix is
+ * an atomic conditional insert in the shared machinery (see docs/TODO.md).
+ */
 export function isUnderDailyCap(callsToday: number, cap: number = DAILY_AI_CALL_CAP): boolean {
   return callsToday < cap;
 }
