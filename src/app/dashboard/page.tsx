@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { db, schema } from "@/db";
 import { createClient } from "@/lib/supabase/server";
+import { InstallPrompt } from "./InstallPrompt";
 
 async function signOut() {
   "use server";
@@ -35,6 +36,15 @@ export default async function DashboardPage() {
   const dueForResolution = openPredictions.filter((row) => row.resolutionDate <= todayIso);
   const upcoming = openPredictions.filter((row) => row.resolutionDate > todayIso);
 
+  // Any prediction at all (open, resolved, or void) — drives the "true
+  // zero-state" empty copy and gates the PWA install prompt.
+  const [anyPredictionRow] = await db
+    .select({ id: schema.predictions.id })
+    .from(schema.predictions)
+    .where(eq(schema.predictions.userId, user.id))
+    .limit(1);
+  const hasAnyPrediction = Boolean(anyPredictionRow);
+
   return (
     <main className="flex flex-1 justify-center p-6">
       <div className="w-full max-w-md">
@@ -45,62 +55,88 @@ export default async function DashboardPage() {
           </p>
         </div>
 
-        <div className="mt-6 flex justify-center gap-3">
+        <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center sm:gap-3">
           <Link
             href="/predictions/new"
-            className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-zinc-900"
+            className="w-full rounded-md bg-zinc-900 px-4 py-2 text-center text-sm font-medium text-white sm:w-auto dark:bg-white dark:text-zinc-900"
           >
             New prediction
           </Link>
           <Link
             href="/insights"
-            className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
+            className="w-full rounded-md border border-zinc-300 px-4 py-2 text-center text-sm font-medium hover:bg-zinc-100 sm:w-auto dark:border-zinc-700 dark:hover:bg-zinc-900"
           >
             Insights
           </Link>
-          <form action={signOut}>
+          <form action={signOut} className="w-full sm:w-auto">
             <button
               type="submit"
-              className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
+              className="w-full rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium hover:bg-zinc-100 sm:w-auto dark:border-zinc-700 dark:hover:bg-zinc-900"
             >
               Sign out
             </button>
           </form>
         </div>
 
-        {dueForResolution.length > 0 && (
+        <InstallPrompt hasAnyPrediction={hasAnyPrediction} />
+
+        {openPredictions.length > 0 && (
           <section className="mt-10">
             <h2 className="text-sm font-medium text-zinc-500">Due for resolution</h2>
-            <ul className="mt-2 flex flex-col gap-2">
-              {dueForResolution.map((row) => (
-                <li key={row.id}>
-                  <Link
-                    href={`/predictions/${row.id}/resolve`}
-                    className="flex items-center justify-between gap-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm hover:bg-amber-100 dark:border-amber-800/60 dark:bg-amber-950/30 dark:hover:bg-amber-950/50"
-                  >
-                    <span>
-                      <span className="block">{row.text}</span>
-                      <span className="mt-1 block text-xs text-zinc-500">
-                        {Math.round(Number(row.confidence) * 100)}% · due {row.resolutionDate}
+            {dueForResolution.length > 0 ? (
+              <ul className="mt-2 flex flex-col gap-2">
+                {dueForResolution.map((row) => (
+                  <li key={row.id}>
+                    <Link
+                      href={`/predictions/${row.id}/resolve`}
+                      className="flex items-center justify-between gap-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm hover:bg-amber-100 dark:border-amber-800/60 dark:bg-amber-950/30 dark:hover:bg-amber-950/50"
+                    >
+                      <span className="min-w-0">
+                        <span className="block">{row.text}</span>
+                        <span className="mt-1 block text-xs text-zinc-500">
+                          {Math.round(Number(row.confidence) * 100)}% · due {row.resolutionDate}
+                        </span>
                       </span>
-                    </span>
-                    <span className="shrink-0 rounded-md bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white dark:bg-white dark:text-zinc-900">
-                      Resolve
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
+                      <span className="shrink-0 rounded-md bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white dark:bg-white dark:text-zinc-900">
+                        Resolve
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-2 text-sm text-zinc-400">
+                Nothing due yet — your next resolution date is {upcoming[0]!.resolutionDate}.
+              </p>
+            )}
           </section>
         )}
 
         <section className="mt-10">
           <h2 className="text-sm font-medium text-zinc-500">Open predictions</h2>
-          {upcoming.length === 0 ? (
+          {!hasAnyPrediction ? (
+            <div className="mt-2 rounded-md border border-dashed border-zinc-300 p-4 text-center text-sm text-zinc-500 dark:border-zinc-700">
+              <p>Nothing here yet — every calibration curve starts with one prediction.</p>
+              <Link
+                href="/predictions/new"
+                className="mt-2 inline-block font-medium text-zinc-900 underline dark:text-zinc-50"
+              >
+                Log your first prediction
+              </Link>
+            </div>
+          ) : upcoming.length === 0 ? (
             <p className="mt-2 text-sm text-zinc-400">
-              {dueForResolution.length > 0
-                ? "Nothing else open — resolve the ones above."
-                : "Nothing open yet — log your first prediction above."}
+              {openPredictions.length > 0 ? (
+                "Nothing else open — resolve the ones above."
+              ) : (
+                <>
+                  Nothing open right now — see how you&apos;ve done in{" "}
+                  <Link href="/insights" className="underline">
+                    Insights
+                  </Link>
+                  .
+                </>
+              )}
             </p>
           ) : (
             <ul className="mt-2 flex flex-col gap-2">

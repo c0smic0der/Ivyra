@@ -25,8 +25,8 @@ function BreakdownTable({ title, rows }: { title: string; rows: BiasBreakdownRow
           {rows.map((row) => (
             <tr key={row.key} className="border-t border-zinc-100 dark:border-zinc-800">
               <td className="py-1.5 capitalize">{row.key.replace(/_/g, " ")}</td>
-              <td className="py-1.5 text-right text-zinc-500">n={row.n}</td>
-              <td className="py-1.5 text-right tabular-nums">
+              <td className="whitespace-nowrap py-1.5 text-right text-zinc-500">n={row.n}</td>
+              <td className="whitespace-nowrap py-1.5 text-right tabular-nums">
                 {row.bias >= 0 ? "+" : ""}
                 {Math.round(row.bias * 100)}
               </td>
@@ -72,6 +72,19 @@ export default async function InsightsPage() {
         </Link>
 
         <h1 className="mt-4 text-2xl font-semibold">Insights</h1>
+
+        {vm.n === 0 && (
+          <div className="mt-6 rounded-md border border-dashed border-zinc-300 p-4 text-sm text-zinc-600 dark:border-zinc-700 dark:text-zinc-300">
+            <p className="font-medium">No resolutions yet</p>
+            <p className="mt-1">
+              Insights unlock as you resolve predictions — bias score at 10, progress trend at
+              25, calibration curve at 30.
+            </p>
+            <Link href="/dashboard" className="mt-2 inline-block font-medium underline">
+              Go make a prediction →
+            </Link>
+          </div>
+        )}
 
         {/* Bias score */}
         <section className="mt-6 rounded-md border border-zinc-200 p-4 dark:border-zinc-800">

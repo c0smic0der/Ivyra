@@ -13,11 +13,21 @@ const PLACEHOLDER_EXAMPLES = [
 
 const initialState: CreatePredictionState = {};
 
-export function PredictionForm() {
+interface PredictionFormProps {
+  initialText?: string;
+  initialKind?: "self" | "world";
+  initialConfidence?: number;
+}
+
+export function PredictionForm({
+  initialText = "",
+  initialKind = "self",
+  initialConfidence = 70,
+}: PredictionFormProps) {
   const [state, formAction, pending] = useActionState(createPrediction, initialState);
-  const [predictionKind, setPredictionKind] = useState<"self" | "world">("self");
-  const [text, setText] = useState("");
-  const [confidence, setConfidence] = useState(70);
+  const [predictionKind, setPredictionKind] = useState<"self" | "world">(initialKind);
+  const [text, setText] = useState(initialText);
+  const [confidence, setConfidence] = useState(initialConfidence);
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [minResolutionDate] = useState(() => new Date(Date.now() + 86_400_000).toISOString().slice(0, 10));
   const { result: trackRecordResult } = useTrackRecordPanel(text);
