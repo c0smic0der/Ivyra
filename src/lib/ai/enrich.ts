@@ -1,14 +1,15 @@
 import { and, eq, gte, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { HAIKU_INPUT_COST_PER_TOKEN, HAIKU_MODEL, HAIKU_OUTPUT_COST_PER_TOKEN } from "@/lib/ai/anthropic";
-import { embedPrediction, isUnderDailyCap, runEnrichWithRepair, type EnrichWithRepairResult } from "@/lib/ai/enrichCore";
+import { embedText } from "@/lib/ai/embedding";
+import { isUnderDailyCap, runEnrichWithRepair, type EnrichWithRepairResult } from "@/lib/ai/enrichCore";
 import type { EnrichOutput } from "@/lib/ai/enrichSchema";
 
 // DB-touching orchestration for capture-time enrichment. The pure/injectable
 // logic (cap boundary check, repair-retry) lives in enrichCore.ts so it can
 // be unit-tested without a DATABASE_URL or any network access.
 
-async function countAiCallsToday(userId: string): Promise<number> {
+export async function countAiCallsToday(userId: string): Promise<number> {
   const startOfDayUtc = new Date();
   startOfDayUtc.setUTCHours(0, 0, 0, 0);
   const [result] = await db
@@ -21,7 +22,7 @@ async function countAiCallsToday(userId: string): Promise<number> {
 export async function logAiCall(params: {
   userId: string;
   predictionId: string | null;
-  purpose: "enrich" | "postmortem" | "monthly_insight" | "reference_class";
+  purpose: "enrich" | "postmortem" | "monthly_insight" | "reference_class" | "track_record_embed";
   model: string;
   inputTokens: number;
   outputTokens: number;
@@ -80,7 +81,7 @@ export async function enrichPrediction(params: {
     latencyMs,
   });
 
-  const embedding = await embedPrediction(params.text, params.reasoning);
+  const embedding = await embedText(params.text, params.reasoning);
 
   await db
     .update(schema.predictions)

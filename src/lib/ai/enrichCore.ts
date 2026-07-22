@@ -92,14 +92,3 @@ export async function runEnrichWithRepair(
     attempts: 2,
   };
 }
-
-/**
- * Stub. Day 6 (track-record surfacing) replaces this with a real embedding
- * call over prediction+reasoning text for pgvector similarity search. Until
- * then `predictions.embedding` stays null. Deliberately does NOT log to
- * ai_calls — there is no real call made here to log.
- */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- signature matches the real Day 6 implementation
-export async function embedPrediction(_text: string, _reasoning: string | null): Promise<null> {
-  return null;
-}

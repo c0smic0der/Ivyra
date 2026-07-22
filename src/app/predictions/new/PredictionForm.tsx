@@ -2,6 +2,8 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { createPrediction, type CreatePredictionState } from "./actions";
+import { TrackRecordPanel } from "./TrackRecordPanel";
+import { useTrackRecordPanel } from "./useTrackRecordPanel";
 
 const PLACEHOLDER_EXAMPLES = [
   "The kitchen reno finishes by Aug 15",
@@ -18,6 +20,7 @@ export function PredictionForm() {
   const [confidence, setConfidence] = useState(70);
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [minResolutionDate] = useState(() => new Date(Date.now() + 86_400_000).toISOString().slice(0, 10));
+  const { result: trackRecordResult } = useTrackRecordPanel(text);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -61,6 +64,8 @@ export function PredictionForm() {
           </ul>
         </details>
       </div>
+
+      <TrackRecordPanel result={trackRecordResult} />
 
       <div>
         <label htmlFor="confidencePercent" className="block text-sm font-medium">
