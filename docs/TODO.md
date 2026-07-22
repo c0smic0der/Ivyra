@@ -42,3 +42,77 @@ reserved atomically, no window. Wrap this as `reserveAiCallIfUnderCap(...)` in
 the post-mortem through it, replacing their separate `countAiCallsToday` +
 `isUnderDailyCap` checks. Keep `finalizeAiCall()` for filling real token counts
 after the call. Unit-test the boundary (at cap ⇒ no insert; under cap ⇒ insert).
+
+## Early resolution (feature — its own commit)
+
+**Status:** open. **Type:** product feature, not a bug.
+
+**What.** Let a user resolve ANY open prediction early, not only ones whose
+`resolution_date` has arrived. Today the only entry into the resolve flow is the
+dashboard's "Due for resolution" list (`resolution_date <= today`); a prediction
+you already know the outcome of (event happened ahead of the deadline, plan
+abandoned, etc.) can't be closed until its date passes.
+
+**How.** Add a "Resolve" affordance on the prediction detail page for any
+`status = 'open'` row (in addition to the existing due-list entry). It reuses the
+exact same resolve path — no new scoring or mutation logic:
+
+- The resolve Server Action (`src/app/predictions/[id]/resolve/actions.ts`)
+  already gates only on `status = 'open'`, NOT on the date — so it accepts an
+  early resolution as-is. Verify no date guard needs adding; it doesn't today.
+- The resolve page (`src/app/predictions/[id]/resolve/page.tsx`) already renders
+  for any open row. The missing piece is only the *entry point* from the detail
+  page (which doesn't exist yet — see note below).
+
+**Honesty guardrail.** Criteria + reasoning are already frozen at creation, so
+early resolution stays un-gameable — that's the whole reason this is safe to add.
+Include one **soft, non-blocking** note (a warning, never a hard block) when a
+`world`-kind prediction is being resolved **NO before its resolution_date** — i.e.
+calling a not-yet-due world event as already failed. Phrase it as "resolving this
+before its date — are you sure the outcome is settled?" The user can proceed. Do
+NOT show it for `self` predictions (abandoning your own plan early is a legitimate
+NO) or for early YES (the event demonstrably happened).
+
+**Prereq / note.** There is no prediction *detail* page yet (`/predictions/[id]`)
+— only the capture (`/new`) and resolve (`/[id]/resolve`) routes exist. This
+feature either needs that detail page built first, or the affordance can live on
+the dashboard's open (upcoming) list as an interim "Resolve early" link. Decide
+which when picking this up. Add a test for the soft-note trigger predicate
+(`world` + NO + before date ⇒ warn; all other combinations ⇒ no warn) as pure
+logic, mirroring the resolveCore/postmortemCore split.
+
+## Product decision: allow same-day predictions at all? (undecided)
+
+**Status:** open QUESTION — not yet a task. Owner: product (user), deferred by
+explicit choice this session; do not change validation on a whim.
+
+**Context.** Capture validation currently requires a **strictly future**
+resolution date, enforced in two places:
+
+- Server: `src/lib/predictions/validation.ts` — refine `resolutionMidnight >
+  todayMidnight` ("Resolution date must be in the future").
+- Client: `src/app/predictions/new/PredictionForm.tsx` — the date input's `min`
+  is set to **tomorrow**.
+
+**The question.** Should a resolution date of **today** be allowed at creation?
+Arguments both ways:
+
+- *For:* the rundown's retention note (`docs/02-application-rundown.md` §15)
+  explicitly says to **encourage short-horizon predictions**; a same-day
+  prediction is the shortest horizon and lowers the barrier to a first log.
+- *Against:* a same-day prediction is resolvable the instant it's created, which
+  invites low-stakes "already know the answer" entries that dilute the
+  calibration signal. The frozen-reasoning discipline matters less if there's no
+  time gap between prediction and outcome.
+
+**If the answer is yes:** change both gates together — server refine to `>=`
+(today allowed), client `min` to today — and adjust/rename the "must be in the
+future" message. Keep the tests in `validation.test.ts` in sync (a today-dated
+input flips from reject → accept). This is distinct from the early-resolution
+feature above: early resolution closes an *already-open* prediction before its
+date; same-day *creation* is about what dates are allowed at capture. They can
+ship independently.
+
+**Note:** unrelated to how test data was unblocked this session (open rows were
+backdated directly in the DB, validation left intact) — that was a throwaway, not
+a precedent for this decision.
