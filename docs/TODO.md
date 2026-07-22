@@ -43,6 +43,41 @@ the post-mortem through it, replacing their separate `countAiCallsToday` +
 `isUnderDailyCap` checks. Keep `finalizeAiCall()` for filling real token counts
 after the call. Unit-test the boundary (at cap ⇒ no insert; under cap ⇒ insert).
 
+## Atomic reminder idempotency (cron, Session 9)
+
+**Status:** open. **Severity:** low (requires a concurrent invocation — in
+practice a leaked `CRON_SECRET` racing the real cron run — and is bounded to a
+one-time duplicate-email burst, not an unbounded resend loop).
+
+**Problem.** The reminders cron (`src/app/api/cron/reminders/route.ts`) marks a
+prediction reminded with the same **read-then-write** pattern as the AI cap
+above: `findPredictionsDueToday()` reads rows where `reminded_at IS NULL`
+(`src/lib/reminders/query.ts`), the route sends the email, and only *then* calls
+`markReminded()` to set `reminded_at`. Two overlapping invocations can both read
+the same unmarked rows before either marks them, and both send. A sequential
+second call in the same window already sends nothing (the `isNull` filter plus
+`notYetReminded()` in `src/lib/reminders/remindersCore.ts` catch that case) —
+this gap is concurrency-only. There's also no per-run cap on how many due users
+one invocation emails.
+
+**Fix.** Same shape as the AI cap fix — collapse the read and the mark into one
+atomic conditional statement instead of two round-trips:
+
+```sql
+UPDATE predictions
+SET reminded_at = now()
+WHERE status = 'open' AND resolution_date = $1 AND reminded_at IS NULL
+RETURNING id, user_id, text;
+```
+
+Send off the *returned* rows instead of a separately-read set — that structurally
+caps each row to one send, no window between claim and mark. Optionally add a
+`LIMIT` as a fan-out backstop. **Worth doing together with the AI-cap fix above**:
+both are "read count/rows, act, then write" races in this codebase: the same
+`UPDATE ... WHERE <condition> RETURNING ...` / conditional-insert pattern closes
+both, so a shared helper or at least a shared write-up of the pattern (README
+note, or a small `atomicClaim`-style utility) avoids solving the same race twice.
+
 ## Early resolution (feature — its own commit)
 
 **Status:** open. **Type:** product feature, not a bug.

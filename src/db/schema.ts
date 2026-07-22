@@ -43,6 +43,9 @@ export const predictions = pgTable("predictions", {
     .notNull()
     .defaultNow(),
   resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  // Set by the reminders cron once a due-today email has gone out for this
+  // row, so a repeated/retried invocation doesn't re-email the same user.
+  remindedAt: timestamp("reminded_at", { withTimezone: true }),
 });
 
 // ai_calls ------------------------------------------------------------------

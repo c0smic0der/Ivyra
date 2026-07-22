@@ -15,6 +15,13 @@
       "when": 1784712620058,
       "tag": "0001_seed_base_rates",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1784720083262,
+      "tag": "0002_overconfident_silver_sable",
+      "breakpoints": true
     }
   ]
 }
