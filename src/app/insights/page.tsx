@@ -3,11 +3,14 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { db, schema } from "@/db";
 import { buildInsightsViewModel, type BiasBreakdownRow, type InsightsInput } from "@/lib/insights/insightsCore";
+import { HISTORY_CATEGORIES, type HistoryItem } from "@/lib/insights/historyView";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardLabel } from "@/components/ui/Card";
 import { Header } from "@/components/Header";
 import { CalibrationChart } from "./CalibrationChart";
+import { InsightsSelectionProvider } from "./InsightsSelection";
 import { ProgressChart } from "./ProgressChart";
+import { ResolutionHistory } from "./ResolutionHistory";
 
 function LockStateCard({ sentence }: { sentence: string }) {
   return (
@@ -45,8 +48,12 @@ export default async function InsightsPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  if (!user) redirect("/?signin=1");
 
+  // One user-scoped, RLS-guarded read of the full resolved/void history. It
+  // powers both the charts (computed over the whole record) and the resolution
+  // history list (filtered/sorted/paged live in the browser — the user's own
+  // bounded data, never another user's rows).
   const rows = await db
     .select()
     .from(schema.predictions)
@@ -56,6 +63,8 @@ export default async function InsightsPage() {
     .orderBy(asc(schema.predictions.resolvedAt));
 
   const inputs: InsightsInput[] = rows.map((row) => ({
+    id: row.id,
+    text: row.text,
     confidence: Number(row.confidence),
     outcome: row.outcome,
     status: row.status,
@@ -66,11 +75,23 @@ export default async function InsightsPage() {
 
   const vm = buildInsightsViewModel(inputs, new Date());
 
+  const historyItems: HistoryItem[] = rows.map((row) => ({
+    id: row.id,
+    text: row.text,
+    confidence: Number(row.confidence),
+    outcome: row.outcome,
+    status: row.status as "resolved" | "void",
+    category: row.category,
+    brier: row.brierScore === null ? null : Number(row.brierScore),
+    resolvedAt: row.resolvedAt!.toISOString(),
+  }));
+  const historyExists = historyItems.length > 0;
+
   return (
     <>
       <Header />
       <main className="flex flex-1 justify-center p-6">
-        <div className="w-full max-w-4xl">
+        <div className="w-full max-w-6xl">
           <h1 className="text-3xl font-semibold tracking-tight text-ink">Insights</h1>
 
           {vm.n === 0 && (
@@ -86,79 +107,106 @@ export default async function InsightsPage() {
             </div>
           )}
 
-          {/* Bias score (with its by-category/reasoning breakdown columns) sits
-              next to the calibration curve + progress trend, stacked together. */}
-          <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-2">
-            <Card>
-              <CardLabel>Bias score</CardLabel>
-              {vm.bias.unlocked ? (
-                <>
-                  <p className="mt-2 text-4xl font-semibold tabular-nums text-ink">
-                    {vm.bias.value! >= 0 ? "+" : ""}
-                    {Math.round(vm.bias.value! * 100)}
-                  </p>
-                  <p className="mt-1 text-sm text-ink-secondary">{vm.bias.sentence}</p>
-                  <BreakdownTable title="By category" rows={vm.bias.byCategory} />
-                  <BreakdownTable title="By reasoning type" rows={vm.bias.byReasoningType} />
-                </>
+          {/* The progress chart and the resolution history share a live
+              selection (via context), so clicking/dragging on the chart filters
+              the list beside it with no navigation. */}
+          <InsightsSelectionProvider>
+            <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-12 lg:items-start">
+              {/* LEFT — analytics: headline stats + the two charts. */}
+              <div className="flex flex-col gap-8 lg:col-span-7">
+                <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
+                  <Card>
+                    <CardLabel>Running Brier</CardLabel>
+                    {vm.runningBrier.value !== null ? (
+                      <>
+                        <p className="mt-2 text-5xl font-semibold tabular-nums text-ink">
+                          {vm.runningBrier.value.toFixed(2)}
+                        </p>
+                        <p className="mt-2 text-sm text-ink-secondary">{vm.runningBrier.sentence}</p>
+                        <p className="mt-2 text-xs text-ink-tertiary">
+                          Baseline (always 50%): {vm.baselineBrier}
+                        </p>
+                      </>
+                    ) : (
+                      <p className="mt-2 text-sm text-ink-secondary">No resolutions yet.</p>
+                    )}
+                  </Card>
+
+                  <Card>
+                    <CardLabel>Bias score</CardLabel>
+                    {vm.bias.unlocked ? (
+                      <>
+                        <p className="mt-2 text-5xl font-semibold tabular-nums text-ink">
+                          {vm.bias.value! >= 0 ? "+" : ""}
+                          {Math.round(vm.bias.value! * 100)}
+                        </p>
+                        <p className="mt-2 text-sm text-ink-secondary">{vm.bias.sentence}</p>
+                      </>
+                    ) : (
+                      <div className="mt-2">
+                        <LockStateCard sentence={vm.bias.unlockSentence!} />
+                      </div>
+                    )}
+                  </Card>
+                </div>
+
+                {vm.bias.unlocked &&
+                  (vm.bias.byCategory.length > 0 || vm.bias.byReasoningType.length > 0) && (
+                    <Card>
+                      <CardLabel>Bias breakdown</CardLabel>
+                      <div className="grid grid-cols-1 gap-x-8 sm:grid-cols-2">
+                        <BreakdownTable title="By category" rows={vm.bias.byCategory} />
+                        <BreakdownTable title="By reasoning type" rows={vm.bias.byReasoningType} />
+                      </div>
+                    </Card>
+                  )}
+
+                <Card>
+                  <CardLabel>Calibration curve</CardLabel>
+                  <div className="mt-2">
+                    {vm.curve.unlocked ? (
+                      <CalibrationChart points={vm.curve.points} />
+                    ) : (
+                      <LockStateCard sentence={vm.curve.unlockSentence!} />
+                    )}
+                  </div>
+                </Card>
+
+                <Card>
+                  <CardLabel>Progress (Brier over time)</CardLabel>
+                  <div className="mt-2">
+                    {vm.progress.unlocked ? (
+                      <>
+                        <ProgressChart trend={vm.progress.trend} baseline={vm.baselineBrier} />
+                        {vm.progress.sentence && (
+                          <p className="mt-1 text-sm text-ink-secondary">{vm.progress.sentence}</p>
+                        )}
+                      </>
+                    ) : (
+                      <LockStateCard sentence={vm.progress.unlockSentence!} />
+                    )}
+                  </div>
+                </Card>
+
+                <Card>
+                  <CardLabel>{vm.monthlySummary.periodLabel}</CardLabel>
+                  <p className="mt-2 text-sm text-ink-secondary">{vm.monthlySummary.paragraph}</p>
+                </Card>
+              </div>
+
+              {/* RIGHT — resolution history: live filter/sort/paginate + chart selection. */}
+              {historyExists ? (
+                <ResolutionHistory items={historyItems} categories={HISTORY_CATEGORIES} />
               ) : (
-                <div className="mt-2">
-                  <LockStateCard sentence={vm.bias.unlockSentence!} />
-                </div>
+                <section id="history" className="scroll-mt-6 lg:col-span-5">
+                  <h2 className="text-base font-semibold text-ink">Resolution history</h2>
+                  <Card as="div" className="mt-3 border-dashed text-center text-sm text-ink-secondary">
+                    <p>Your resolved predictions will appear here as you resolve them.</p>
+                  </Card>
+                </section>
               )}
-            </Card>
-
-            <div className="flex flex-col gap-8">
-              <Card>
-                <CardLabel>Calibration curve</CardLabel>
-                <div className="mt-2">
-                  {vm.curve.unlocked ? (
-                    <CalibrationChart points={vm.curve.points} />
-                  ) : (
-                    <LockStateCard sentence={vm.curve.unlockSentence!} />
-                  )}
-                </div>
-              </Card>
-
-              <Card>
-                <CardLabel>Progress (rolling Brier, last 20)</CardLabel>
-                <div className="mt-2">
-                  {vm.progress.unlocked ? (
-                    <>
-                      <ProgressChart trend={vm.progress.trend} baseline={vm.baselineBrier} />
-                      {vm.progress.sentence && (
-                        <p className="mt-1 text-sm text-ink-secondary">{vm.progress.sentence}</p>
-                      )}
-                    </>
-                  ) : (
-                    <LockStateCard sentence={vm.progress.unlockSentence!} />
-                  )}
-                </div>
-              </Card>
             </div>
-          </div>
-
-          {/* Running Brier vs baseline */}
-          <Card className="mt-8">
-            <CardLabel>Running Brier</CardLabel>
-            {vm.runningBrier.value !== null ? (
-              <>
-                <p className="mt-2 text-4xl font-semibold tabular-nums text-ink">
-                  {vm.runningBrier.value.toFixed(2)}
-                </p>
-                <p className="mt-1 text-sm text-ink-secondary">{vm.runningBrier.sentence}</p>
-                <p className="mt-1 text-xs text-ink-tertiary">Baseline (always 50%): {vm.baselineBrier}</p>
-              </>
-            ) : (
-              <p className="mt-2 text-sm text-ink-secondary">No resolutions yet.</p>
-            )}
-          </Card>
-
-          {/* Monthly summary */}
-          <Card className="mt-8">
-            <CardLabel>{vm.monthlySummary.periodLabel}</CardLabel>
-            <p className="mt-2 text-sm text-ink-secondary">{vm.monthlySummary.paragraph}</p>
-          </Card>
+          </InsightsSelectionProvider>
         </div>
       </main>
     </>

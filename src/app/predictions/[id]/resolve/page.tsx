@@ -14,7 +14,7 @@ export default async function ResolvePage({ params }: { params: Promise<{ id: st
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  if (!user) redirect("/?signin=1");
 
   const [row] = await db
     .select()
@@ -94,7 +94,7 @@ export default async function ResolvePage({ params }: { params: Promise<{ id: st
 
               {row.postmortem && (
                 <Card className="mt-4">
-                  <CardLabel>Post-mortem</CardLabel>
+                  <CardLabel>Looking back</CardLabel>
                   <p className="mt-2 whitespace-pre-wrap text-sm text-ink-secondary">
                     {row.postmortem}
                   </p>

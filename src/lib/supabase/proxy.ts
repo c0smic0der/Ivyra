@@ -39,9 +39,12 @@ export async function updateSession(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const isProtected = path.startsWith("/dashboard") || path.startsWith("/predictions");
 
+  // There's no login page anymore — sign-in is a modal on the landing page.
+  // Send a logged-out visitor there with ?signin=1 so it opens automatically.
   if (isProtected && !user) {
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
+    url.pathname = "/";
+    url.search = "signin=1";
     return NextResponse.redirect(url);
   }
 

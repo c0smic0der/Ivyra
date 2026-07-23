@@ -11,29 +11,79 @@ import {
   biasByGroup,
   biasScore,
   biasSentence,
+  brierScore,
   brierSentence,
+  bucketIndex,
   calibrationBuckets,
   CURVE_UNLOCK_N,
+  ewmaBrierTrend,
   PROGRESS_UNLOCK_N,
   resolvedNonVoid,
   rollingBrier,
-  rollingBrierTrend,
   runningBrier,
-  type RollingPoint,
   type Scorable,
 } from "@/lib/scoring";
 
 /** The normalized shape the page maps DB rows into before handing them here. */
 export interface InsightsInput extends Scorable {
+  /** Row id — lets a chart drill-down link straight to the prediction's detail page. */
+  id: string;
+  /** The user's own words — shown in the chart drill-downs. */
+  text: string;
   resolvedAt: Date;
   category: string | null;
   reasoningType: string | null;
 }
 
+/**
+ * One resolved prediction, flattened for a chart drill-down list: enough to show
+ * a row and link to its detail page, nothing more (no reasoning/post-mortem — the
+ * detail page owns those, so they never ship to the client with the charts).
+ */
+export interface HistoryItemLite {
+  id: string;
+  text: string;
+  /** Stated confidence in [0, 1]. */
+  confidence: number;
+  outcome: boolean;
+  /** This single prediction's Brier — `(confidence − outcome)²`. */
+  brier: number;
+}
+
+/**
+ * A calibration-curve dot. `x`/`y`/`n` are exactly the scoring module's bucket
+ * (what's plotted); `low`/`high` name the confidence band and `predictions` are
+ * its members, so clicking the dot can list every prediction behind it.
+ */
 export interface CalibrationPoint {
   x: number;
   y: number;
   n: number;
+  /** Inclusive lower / exclusive upper confidence bound of this decile. */
+  low: number;
+  high: number;
+  predictions: HistoryItemLite[];
+}
+
+/**
+ * A progress-chart point. `n`/`value` are the plotted rolling-Brier trajectory
+ * (from the scoring module); the rest identify the individual resolution that
+ * point lands on, so clicking it opens that prediction, hovering shows its text
+ * and its own score, and a brushed range maps back to resolution dates.
+ */
+export interface ProgressPoint {
+  /** 1-based count of resolutions up to and including this point (x-axis). */
+  n: number;
+  /** EWMA "recent form" Brier as of this resolution (the chart's Recent series). */
+  value: number;
+  /** Cumulative lifetime Brier over every resolution up to and including this one. */
+  lifetime: number;
+  predictionId: string;
+  text: string;
+  /** This resolution's own Brier (not the rolling or lifetime value). */
+  brier: number;
+  /** Resolution date (YYYY-MM-DD) — lets a brushed range become a history date filter. */
+  resolvedDate: string;
 }
 
 export interface BiasBreakdownRow {
@@ -67,7 +117,7 @@ export interface InsightsViewModel {
   progress: {
     unlocked: boolean;
     unlockSentence: string | null;
-    trend: RollingPoint[];
+    trend: ProgressPoint[];
     last20: number | null;
     sentence: string | null;
   };
@@ -91,6 +141,76 @@ function progressCopy(current: number, threshold: number, subject: string): stri
 
 function toBreakdownRows(groups: ReturnType<typeof biasByGroup>): BiasBreakdownRow[] {
   return groups.map((g) => ({ ...g, sentence: biasSentence(g.bias) }));
+}
+
+function toHistoryItem(p: InsightsInput & { outcome: boolean }): HistoryItemLite {
+  return {
+    id: p.id,
+    text: p.text,
+    confidence: p.confidence,
+    outcome: p.outcome,
+    brier: brierScore(p.confidence, p.outcome),
+  };
+}
+
+/**
+ * The scoring module's calibration buckets, each annotated with its member
+ * predictions for the click-to-drill-down panel. Members are assigned via the
+ * exported `bucketIndex` — the *same* decile logic the buckets were built from —
+ * so a dot and its list can never disagree about which band a prediction is in.
+ */
+function buildCalibrationPoints(
+  resolved: Array<InsightsInput & { outcome: boolean }>,
+): CalibrationPoint[] {
+  const membersByIndex = new Map<number, HistoryItemLite[]>();
+  for (const p of resolved) {
+    const idx = bucketIndex(p.confidence);
+    const members = membersByIndex.get(idx);
+    if (members) members.push(toHistoryItem(p));
+    else membersByIndex.set(idx, [toHistoryItem(p)]);
+  }
+
+  return calibrationBuckets(resolved).map((b) => ({
+    x: b.meanConfidence,
+    y: b.actualFrequency,
+    n: b.n,
+    low: b.low,
+    high: b.high,
+    predictions: membersByIndex.get(b.index) ?? [],
+  }));
+}
+
+/**
+ * The Brier trajectory, each point tied back to the individual resolution it
+ * lands on. The chart's two toggleable series:
+ *  - `value` = the EWMA "recent form" (recency-weighted). A trailing window was
+ *    deliberately rejected here: it equals the lifetime mean for the first 20
+ *    points, so the recent/lifetime toggle looked like it did nothing. The EWMA
+ *    diverges from lifetime at every point, so flipping visibly moves the whole
+ *    line and every dot.
+ *  - `lifetime` = the cumulative running mean of the same per-prediction Briers.
+ * `ewmaBrierTrend` yields one point per resolution in the same chronological
+ * order as `resolved`, so index `i` pairs it with `resolved[i]`; the lifetime
+ * mean is accumulated in the same pass.
+ */
+function buildProgressPoints(
+  resolved: Array<InsightsInput & { outcome: boolean }>,
+): ProgressPoint[] {
+  let cumulativeSum = 0;
+  return ewmaBrierTrend(resolved).map((pt, i) => {
+    const p = resolved[i]!;
+    const brier = brierScore(p.confidence, p.outcome);
+    cumulativeSum += brier;
+    return {
+      n: pt.n,
+      value: pt.value,
+      lifetime: cumulativeSum / (i + 1),
+      predictionId: p.id,
+      text: p.text,
+      brier,
+      resolvedDate: p.resolvedAt.toISOString().slice(0, 10),
+    };
+  });
 }
 
 /** Start of `date`'s UTC calendar month, and the start of the following one. */
@@ -144,14 +264,10 @@ export function buildInsightsViewModel(preds: InsightsInput[], now: Date): Insig
   const biasUnlocked = n >= BIAS_UNLOCK_N;
 
   const curveUnlocked = n >= CURVE_UNLOCK_N;
-  const points: CalibrationPoint[] = calibrationBuckets(resolved).map((b) => ({
-    x: b.meanConfidence,
-    y: b.actualFrequency,
-    n: b.n,
-  }));
+  const points = buildCalibrationPoints(resolved);
 
   const progressUnlocked = n >= PROGRESS_UNLOCK_N;
-  const trend = rollingBrierTrend(resolved, 20);
+  const trend = buildProgressPoints(resolved);
   const last20 = rollingBrier(resolved, 20);
   const lifetime = runningBrier(resolved);
 

@@ -10,7 +10,7 @@ export const STEPS = [
     body: "When the outcome lands, come back and mark it yes or no. Your original reasoning stays frozen — no rewriting history.",
   },
   {
-    title: "3. See your calibration",
-    body: "After a handful of resolutions, Calra plots your stated confidence against what actually happened — so you can see exactly how good your gut really is.",
+    title: "3. Recalibrate",
+    body: "After a handful of resolutions, Calra scores your calibration — plotting your stated confidence against what actually happened — so you can see where you lean over- or under-confident and sharpen the judgment behind your next decision.",
   },
 ];

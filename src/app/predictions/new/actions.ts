@@ -21,7 +21,7 @@ export async function createPrediction(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect("/login");
+    redirect("/?signin=1");
   }
 
   const validated = validateCreatePredictionInput({

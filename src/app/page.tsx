@@ -5,16 +5,108 @@ import { CalibrationChart } from "@/app/insights/CalibrationChart";
 import type { CalibrationPoint } from "@/lib/insights/insightsCore";
 import { Card, CardLabel } from "@/components/ui/Card";
 import { buttonVariants } from "@/components/ui/button";
-import { Header } from "@/components/Header";
+import { SignInButton, SignInProvider } from "@/components/auth/SignIn";
 import { STEPS } from "@/lib/content/howItWorks";
 
+// Marketing sample only — empty `predictions` makes the chart's drill-down
+// self-disable, so this renders as a static curve with no click affordance.
 const SAMPLE_POINTS: CalibrationPoint[] = [
-  { x: 0.2, y: 0.22, n: 5 },
-  { x: 0.4, y: 0.35, n: 8 },
-  { x: 0.6, y: 0.5, n: 11 },
-  { x: 0.8, y: 0.63, n: 9 },
-  { x: 0.95, y: 0.72, n: 6 },
+  { x: 0.2, y: 0.22, n: 5, low: 0.2, high: 0.3, predictions: [] },
+  { x: 0.4, y: 0.35, n: 8, low: 0.4, high: 0.5, predictions: [] },
+  { x: 0.6, y: 0.5, n: 11, low: 0.6, high: 0.7, predictions: [] },
+  { x: 0.8, y: 0.63, n: 9, low: 0.8, high: 0.9, predictions: [] },
+  { x: 0.95, y: 0.72, n: 6, low: 0.9, high: 1, predictions: [] },
 ];
+
+// --- small inline visuals (no external assets) -----------------------------
+
+function StepIcon({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-accent-tint text-accent">
+      {children}
+    </span>
+  );
+}
+
+const STEP_ICONS = [
+  // predict — pencil
+  <svg key="p" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M12 20h9" />
+    <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+  </svg>,
+  // resolve — check circle
+  <svg key="r" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M22 11.1V12a10 10 0 1 1-5.9-9.1" />
+    <path d="m9 11 3 3L22 4" />
+  </svg>,
+  // recalibrate — target
+  <svg key="c" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <circle cx="12" cy="12" r="9" />
+    <circle cx="12" cy="12" r="4.5" />
+    <circle cx="12" cy="12" r="0.5" fill="currentColor" />
+  </svg>,
+];
+
+/** A compact "here's what you'd see" product teaser for the hero. */
+function DashboardPreview() {
+  return (
+    <Card as="div" className="animate-fade-up">
+      <div className="flex items-center justify-between">
+        <CardLabel>Your calibration</CardLabel>
+        <span className="rounded-full bg-accent-tint px-2 py-0.5 text-[10px] font-medium text-accent">
+          After ~20 calls
+        </span>
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-4">
+        <div>
+          <p className="text-3xl font-semibold tabular-nums text-ink">0.18</p>
+          <p className="mt-0.5 text-xs text-ink-tertiary">Brier — beats the 0.25 coin-flip</p>
+        </div>
+        <div>
+          <p className="text-3xl font-semibold tabular-nums text-ink">+14</p>
+          <p className="mt-0.5 text-xs text-ink-tertiary">points overconfident</p>
+        </div>
+      </div>
+
+      {/* bias meter */}
+      <div className="mt-5">
+        <div className="flex justify-between text-[10px] uppercase tracking-wide text-ink-tertiary">
+          <span>Underconfident</span>
+          <span>Overconfident</span>
+        </div>
+        <div className="relative mt-1 h-2 rounded-full bg-surface">
+          <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-border" />
+          <div className="animate-grow-x absolute left-1/2 top-0 h-full rounded-full bg-accent" style={{ width: "26%" }} />
+        </div>
+      </div>
+
+      {/* rolling-Brier sparkline, trending down (improving) */}
+      <div className="mt-5">
+        <div className="flex items-baseline justify-between">
+          <CardLabel>Rolling Brier</CardLabel>
+          <span className="text-xs text-ink-tertiary">0.24 → 0.16</span>
+        </div>
+        <svg viewBox="0 0 220 56" className="mt-2 w-full" preserveAspectRatio="none" aria-hidden>
+          <polyline
+            className="animate-draw"
+            style={{ "--draw-len": "320" } as React.CSSProperties}
+            points="0,14 37,22 73,16 110,30 147,34 183,42 220,46"
+            fill="none"
+            stroke="var(--color-accent)"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </div>
+    </Card>
+  );
+}
+
+function LegendDot({ className }: { className: string }) {
+  return <span className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full ${className}`} />;
+}
 
 export default async function Home() {
   const supabase = await createClient();
@@ -27,51 +119,237 @@ export default async function Home() {
   }
 
   return (
-    <>
-      <Header showWordmark={false} />
-      <main className="flex flex-1 justify-center p-6">
-        <div className="w-full max-w-4xl">
-          <div className="mx-auto max-w-2xl text-center">
-            <p className="font-wordmark text-6xl font-semibold tracking-tight text-ink sm:text-7xl">
-              Calra<span className="text-accent">.</span>
-            </p>
-            <h1 className="mt-6 text-2xl font-semibold leading-tight tracking-tight text-ink sm:text-3xl">
-              Find out if your gut is actually right
-            </h1>
-            <p className="mt-4 text-base text-ink-secondary">
-              Calra turns your hunches into a track record. Predict, resolve, and watch your
-              calibration curve tell you where your gut is right — and where it&apos;s fooling you.
-            </p>
-            <Link href="/login" className={buttonVariants("primary", { className: "mt-6 inline-flex" })}>
-              Get started
-            </Link>
-          </div>
-
-          <div className="mt-16 grid grid-cols-1 gap-6 md:grid-cols-3">
-            {STEPS.map((step) => (
-              <Card key={step.title} as="div">
-                <h2 className="text-sm font-medium text-ink">{step.title}</h2>
-                <p className="mt-1 text-sm text-ink-secondary">{step.body}</p>
-              </Card>
-            ))}
-          </div>
-
-          <div className="mt-16">
-            <div className="flex items-center justify-between">
-              <CardLabel>Calibration curve</CardLabel>
-              <span className="rounded-full border border-border bg-canvas px-2 py-0.5 text-xs font-medium text-ink-tertiary">
-                Sample data
-              </span>
+    <SignInProvider>
+      {/* Landing-only top bar: brand + the two CTAs (no app nav tabs). */}
+      <header className="sticky top-0 z-10 border-b border-border bg-canvas/80 backdrop-blur-md">
+        <div className="mx-auto flex h-20 w-full max-w-5xl items-center justify-between gap-4 px-6">
+          <span className="font-wordmark text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
+            Calra<span className="text-accent">.</span>
+          </span>
+          <div className="flex flex-col items-end gap-1.5">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Link href="/how-it-works" className={buttonVariants("secondary", { size: "md" })}>
+                See how it works
+              </Link>
+              <SignInButton size="md">Get started</SignInButton>
             </div>
-            <Card as="div" className="mt-2">
-              <CalibrationChart points={SAMPLE_POINTS} />
-            </Card>
-            <p className="mt-2 text-center text-xs text-ink-tertiary">
-              This isn&apos;t your data yet — it&apos;s what a calibration curve looks like.
+            <p className="text-[10px] text-ink-tertiary">
+              Private by default · No passwords, just a magic link
             </p>
           </div>
         </div>
+      </header>
+
+      <main className="flex flex-1 flex-col items-center">
+        {/* HERO */}
+        <section className="w-full bg-gradient-to-b from-accent-tint/60 to-transparent">
+          <div className="mx-auto grid w-full max-w-5xl grid-cols-1 items-center gap-12 px-6 pb-16 pt-10 lg:grid-cols-2 lg:pb-24 lg:pt-14">
+            <div className="animate-fade-up">
+              <span className="inline-block rounded-full border border-border bg-canvas px-3 py-1 text-xs font-medium text-ink-secondary">
+                A decision journal with a real score
+              </span>
+              <h1 className="mt-4 text-4xl font-semibold leading-[1.1] tracking-tight text-ink sm:text-5xl">
+                Sharpen the judgment behind every decision.
+              </h1>
+              <p className="mt-5 max-w-xl text-lg leading-relaxed text-ink-secondary">
+                Calra turns your real-life predictions into an honest track record — showing where
+                your confidence is trustworthy, where it fools you, and how to recalibrate. Better
+                calls, backed by proof.
+              </p>
+            </div>
+
+            <div className="lg:pl-6">
+              <DashboardPreview />
+            </div>
+          </div>
+        </section>
+
+        {/* HOOK */}
+        <section className="w-full px-6 py-16">
+          <div className="mx-auto max-w-3xl text-center">
+            <h2 className="text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
+              You make dozens of judgment calls a week.
+            </h2>
+            <p className="mt-4 text-lg leading-relaxed text-ink-secondary">
+              Deadlines, money, hiring, your own habits. How many actually pan out? Most people never
+              find out — so the same confident mistakes repeat for years. Calra keeps score with math
+              you can&apos;t fudge, and shows you exactly where to adjust.
+            </p>
+          </div>
+        </section>
+
+        {/* HOW IT WORKS */}
+        <section className="w-full bg-surface px-6 py-16">
+          <div className="mx-auto max-w-5xl">
+            <div className="text-center">
+              <CardLabel as="p">How it works</CardLabel>
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
+                Three steps, thirty seconds each
+              </h2>
+            </div>
+            <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-3">
+              {STEPS.map((step, i) => (
+                <Card key={step.title} as="div">
+                  <StepIcon>{STEP_ICONS[i]}</StepIcon>
+                  <h3 className="mt-4 text-base font-semibold text-ink">{step.title}</h3>
+                  <p className="mt-1.5 text-sm leading-relaxed text-ink-secondary">{step.body}</p>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* BENEFITS */}
+        <section className="w-full px-6 py-16">
+          <div className="mx-auto max-w-5xl">
+            <div className="text-center">
+              <CardLabel as="p">What you get</CardLabel>
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
+                Not just a journal — a mirror for your judgment
+              </h2>
+            </div>
+
+            <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-3">
+              {/* overconfidence */}
+              <Card as="div" className="flex flex-col">
+                <h3 className="text-base font-semibold text-ink">Catch your overconfidence</h3>
+                <p className="mt-1.5 text-sm leading-relaxed text-ink-secondary">
+                  One Bias score tells you whether your 90%s are really 90%s. For most people, they
+                  aren&apos;t — and that gap is where decisions go wrong.
+                </p>
+                <div className="mt-auto pt-5">
+                  <div className="flex justify-between text-[10px] uppercase tracking-wide text-ink-tertiary">
+                    <span>Under</span>
+                    <span>Over</span>
+                  </div>
+                  <div className="relative mt-1 h-2 rounded-full bg-surface">
+                    <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-border" />
+                    <div className="absolute left-1/2 top-0 h-full rounded-full bg-accent" style={{ width: "30%" }} />
+                  </div>
+                  <p className="mt-2 text-xs text-ink-tertiary">
+                    <span className="font-medium text-ink">+14 points</span> overconfident
+                  </p>
+                </div>
+              </Card>
+
+              {/* improvement */}
+              <Card as="div" className="flex flex-col">
+                <h3 className="text-base font-semibold text-ink">Watch yourself get sharper</h3>
+                <p className="mt-1.5 text-sm leading-relaxed text-ink-secondary">
+                  Your rolling Brier score turns &quot;am I improving?&quot; into a line you can
+                  actually watch bend — recent calls weighed against your lifetime average.
+                </p>
+                <div className="mt-auto pt-5">
+                  <svg viewBox="0 0 220 56" className="w-full" preserveAspectRatio="none" aria-hidden>
+                    <line x1="0" y1="28" x2="220" y2="28" stroke="var(--color-border)" strokeDasharray="4 4" />
+                    <polyline
+                      points="0,16 37,24 73,18 110,30 147,36 183,42 220,48"
+                      fill="none"
+                      stroke="var(--color-accent)"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  <p className="mt-2 text-xs text-ink-tertiary">
+                    Last 20: <span className="font-medium text-ink">0.16</span> vs 0.24 lifetime
+                  </p>
+                </div>
+              </Card>
+
+              {/* post-mortem */}
+              <Card as="div" className="flex flex-col">
+                <h3 className="text-base font-semibold text-ink">Learn from every miss</h3>
+                <p className="mt-1.5 text-sm leading-relaxed text-ink-secondary">
+                  When a call goes wrong, Calra diffs what you predicted against what happened —
+                  anchored only to what you wrote, never invented.
+                </p>
+                <div className="mt-auto pt-5">
+                  <div className="rounded-xl border border-border-subtle bg-surface p-3">
+                    <CardLabel as="p">Looking back</CardLabel>
+                    <p className="mt-1.5 text-xs leading-relaxed text-ink-secondary">
+                      &quot;Your reasoning never mentioned the dependency that caused the slip — the
+                      third deadline miss that came from outside your team.&quot;
+                    </p>
+                  </div>
+                </div>
+              </Card>
+            </div>
+          </div>
+        </section>
+
+        {/* CALIBRATION CURVE EXPLAINED */}
+        <section className="w-full bg-surface px-6 py-16">
+          <div className="mx-auto grid max-w-5xl grid-cols-1 items-center gap-10 lg:grid-cols-2">
+            <div>
+              <CardLabel as="p">The calibration curve</CardLabel>
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
+                See exactly where your gut is right
+              </h2>
+              <p className="mt-4 text-base leading-relaxed text-ink-secondary">
+                Each dot groups the predictions you made at a similar confidence level, then plots
+                that confidence against how often you were actually right.
+              </p>
+              <ul className="mt-5 flex flex-col gap-3 text-sm text-ink-secondary">
+                <li className="flex items-start gap-2.5">
+                  <span className="mt-2 h-0 w-5 shrink-0 border-t border-dashed border-ink-tertiary" />
+                  <span>
+                    <span className="font-medium text-ink">The dashed diagonal</span> is perfect
+                    calibration — where saying 70% means it happens 70% of the time.
+                  </span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <LegendDot className="mt-1 bg-accent" />
+                  <span>
+                    <span className="font-medium text-ink">Dots below the line</span> mean you were
+                    overconfident; above means underconfident.
+                  </span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <LegendDot className="mt-1 bg-ink-tertiary/40" />
+                  <span>The closer your dots hug the diagonal, the more your confidence can be trusted.</span>
+                </li>
+              </ul>
+            </div>
+
+            <div>
+              <Card as="div">
+                <div className="flex items-center justify-between">
+                  <CardLabel>Calibration curve</CardLabel>
+                  <span className="rounded-full border border-border bg-canvas px-2 py-0.5 text-xs font-medium text-ink-tertiary">
+                    Sample data
+                  </span>
+                </div>
+                <div className="mt-2">
+                  <CalibrationChart points={SAMPLE_POINTS} />
+                </div>
+              </Card>
+              <p className="mt-2 text-center text-xs text-ink-tertiary">
+                This isn&apos;t your data yet — it&apos;s what a calibration curve looks like.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* FINAL CTA */}
+        <section className="w-full px-6 py-20">
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+              Start your track record today
+            </h2>
+            <p className="mt-4 text-lg leading-relaxed text-ink-secondary">
+              It takes about thirty seconds to log your first prediction. In a few weeks, you&apos;ll
+              know something about yourself most people never do.
+            </p>
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+              <SignInButton className="text-base">Get started — it&apos;s free</SignInButton>
+              <Link href="/how-it-works" className={buttonVariants("secondary", { className: "text-base" })}>
+                See how it works
+              </Link>
+            </div>
+          </div>
+        </section>
       </main>
-    </>
+    </SignInProvider>
   );
 }

@@ -18,7 +18,7 @@ export default async function NewPredictionPage({
   // proxy.ts already guards /predictions, but re-check so the type is
   // narrowed and the page is safe even if the matcher ever changes.
   if (!user) {
-    redirect("/login");
+    redirect("/?signin=1");
   }
 
   const { template: rawTemplate, draft: rawDraft } = await searchParams;

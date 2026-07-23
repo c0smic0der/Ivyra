@@ -10,6 +10,8 @@ import {
   calibrationBuckets,
   CURVE_UNLOCK_N,
   ece,
+  EWMA_ALPHA,
+  ewmaBrierTrend,
   PROGRESS_UNLOCK_N,
   rollingBrier,
   rollingBrierTrend,
@@ -374,5 +376,52 @@ describe("rollingBrierTrend (window = 20)", () => {
   it("a single resolved prediction yields one point equal to its own Brier", () => {
     const trend = rollingBrierTrend([p(0.9, true)], 20);
     expect(trend).toEqual([{ n: 1, value: brierScore(0.9, true) }]);
+  });
+});
+
+describe("ewmaBrierTrend (recency-weighted 'recent form')", () => {
+  it("seeds the first point with that prediction's own Brier", () => {
+    expect(ewmaBrierTrend([p(0.9, true)])).toEqual([{ n: 1, value: brierScore(0.9, true) }]);
+  });
+
+  it("applies the recurrence α·brier + (1−α)·prev at each step", () => {
+    const preds = [p(0.9, true), p(0.9, false), p(0.5, true)]; // briers 0.01, 0.81, 0.25
+    const a = EWMA_ALPHA;
+    const b = [brierScore(0.9, true), brierScore(0.9, false), brierScore(0.5, true)];
+    const e1 = b[0]!;
+    const e2 = a * b[1]! + (1 - a) * e1;
+    const e3 = a * b[2]! + (1 - a) * e2;
+    const trend = ewmaBrierTrend(preds);
+    expect(trend.map((t) => t.value)).toEqual([e1, e2, e3]);
+    expect(trend.map((t) => t.n)).toEqual([1, 2, 3]);
+  });
+
+  it("excludes voids and open predictions, like every other aggregate", () => {
+    const trend = ewmaBrierTrend([p(0.9, true), p(0.5, null, "void"), p(0.8, false, "open")]);
+    expect(trend).toHaveLength(1);
+  });
+
+  it("tracks recent form: departs from the cumulative mean and ends far below a miss-heavy lifetime", () => {
+    // Ten confident misses, then twenty confident hits.
+    const preds = Array.from({ length: 30 }, (_, i) => p(0.9, i >= 10));
+    const ewma = ewmaBrierTrend(preds);
+    let sum = 0;
+    let departures = 0;
+    ewma.forEach((pt, i) => {
+      sum += brierScore(preds[i]!.confidence, preds[i]!.outcome as boolean);
+      if (Math.abs(pt.value - sum / (i + 1)) > 1e-9) departures++;
+    });
+    // Once the hits start arriving, recent form pulls away from the lifetime mean.
+    expect(departures).toBeGreaterThan(15);
+    // Recent form (all recent hits) ends far below the miss-laden lifetime mean.
+    expect(ewma.at(-1)!.value).toBeLessThan(0.05);
+    expect(sum / preds.length).toBeGreaterThan(0.25);
+  });
+
+  it("higher alpha reacts faster to a fresh result", () => {
+    const preds = [p(0.5, true), p(0.5, true), p(0.9, false)]; // calm, then a big miss
+    const slow = ewmaBrierTrend(preds, 0.1).at(-1)!.value;
+    const fast = ewmaBrierTrend(preds, 0.5).at(-1)!.value;
+    expect(fast).toBeGreaterThan(slow); // fast weights the recent miss more
   });
 });

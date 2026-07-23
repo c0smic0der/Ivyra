@@ -22,7 +22,7 @@ export default async function DashboardPage() {
   // proxy.ts already guards this route, but re-check so the type is narrowed
   // and the page is safe even if the matcher ever changes.
   if (!user) {
-    redirect("/login");
+    redirect("/?signin=1");
   }
 
   const openPredictions = await db
@@ -57,6 +57,8 @@ export default async function DashboardPage() {
     .orderBy(asc(schema.predictions.resolvedAt));
 
   const insightsInputs: InsightsInput[] = resolvedRows.map((row) => ({
+    id: row.id,
+    text: row.text,
     confidence: Number(row.confidence),
     outcome: row.outcome,
     status: row.status,

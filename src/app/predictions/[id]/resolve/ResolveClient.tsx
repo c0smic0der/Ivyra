@@ -70,7 +70,7 @@ export function ResolveClient({ id }: { id: string }) {
 
         {result.canPostmortem && (
           <Card className="mt-4">
-            <CardLabel>Post-mortem</CardLabel>
+            <CardLabel>Looking back</CardLabel>
             {pmState === "streaming" && postmortem === "" ? (
               <p className="mt-2 text-ink-tertiary">Analyzing…</p>
             ) : pmState === "error" ? (

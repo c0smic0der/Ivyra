@@ -282,7 +282,7 @@ export default async function HowItWorksPage() {
               </p>
               <div className="mt-6">
                 <Link
-                  href={user ? "/predictions/new" : "/login"}
+                  href={user ? "/predictions/new" : "/?signin=1"}
                   className={buttonVariants("primary", { size: "md", className: "text-base" })}
                 >
                   {user ? "Make your first prediction →" : "Get started →"}

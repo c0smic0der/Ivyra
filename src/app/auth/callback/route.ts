@@ -23,6 +23,7 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  // No login page — bounce back to the landing sign-in modal with the reason.
   const reason = encodeURIComponent(authError ?? "invalid_link");
-  return NextResponse.redirect(new URL(`/login?error=${reason}`, origin));
+  return NextResponse.redirect(new URL(`/?signin=1&error=${reason}`, origin));
 }

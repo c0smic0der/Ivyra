@@ -40,3 +40,56 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
+
+/* --- Landing-page motion (subtle; disabled for reduced-motion users) --- */
+@keyframes calra-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes calra-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes calra-grow-x {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.animate-fade-up {
+  animation: calra-fade-up 0.6s ease-out both;
+}
+
+.animate-draw {
+  stroke-dasharray: var(--draw-len, 300);
+  stroke-dashoffset: var(--draw-len, 300);
+  animation: calra-draw 1.6s ease-out 0.3s forwards;
+}
+
+.animate-grow-x {
+  transform-origin: left;
+  animation: calra-grow-x 1s ease-out 0.2s both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up,
+  .animate-draw,
+  .animate-grow-x {
+    animation: none;
+  }
+  .animate-draw {
+    stroke-dashoffset: 0;
+  }
+}

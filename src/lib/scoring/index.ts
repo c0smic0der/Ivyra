@@ -80,8 +80,13 @@ function mean(xs: number[]): number {
  * A tiny epsilon nudges exact decile boundaries up to the intended bucket
  * without moving genuinely-interior values. The top decile [0.9, 1.0] is closed,
  * so 1.0 clamps to index 9.
+ *
+ * Exported so callers rendering the interactive curve can assign an individual
+ * prediction to *the same* decile the curve was built from. Reusing this instead
+ * of re-deriving `[low, high)` membership avoids the float-drift that makes a
+ * 0.7-stored-as-0.699… land in the wrong band.
  */
-function bucketIndex(confidence: number): number {
+export function bucketIndex(confidence: number): number {
   const raw = Math.floor(confidence * NUM_BUCKETS + 1e-9);
   return Math.min(NUM_BUCKETS - 1, Math.max(0, raw));
 }
@@ -142,6 +147,28 @@ export function rollingBrierTrend(preds: Scorable[], window = 20): RollingPoint[
     n: i + 1,
     value: rollingBrier(resolved.slice(0, i + 1), window)!,
   }));
+}
+
+/** Default EWMA smoothing factor: an effective span of ~9 resolutions (2/α − 1). */
+export const EWMA_ALPHA = 0.2;
+
+/**
+ * Exponentially-weighted "recent form" Brier at each resolution: each point is
+ * `α·thisBrier + (1−α)·previous`, seeded with the first Brier. Unlike a trailing
+ * window (which equals the lifetime mean until the window fills), the EWMA
+ * diverges from the cumulative average at every point after the first — so a
+ * "recent vs lifetime" toggle shows two genuinely distinct trajectories instead
+ * of curves that overlap for the first `window` points. Higher `alpha` = more
+ * responsive. Input order is treated as chronological.
+ */
+export function ewmaBrierTrend(preds: Scorable[], alpha = EWMA_ALPHA): RollingPoint[] {
+  const resolved = resolvedNonVoid(preds);
+  let ewma: number | null = null;
+  return resolved.map((p, i) => {
+    const brier = brierScore(p.confidence, p.outcome);
+    ewma = ewma === null ? brier : alpha * brier + (1 - alpha) * ewma;
+    return { n: i + 1, value: ewma };
+  });
 }
 
 /**
