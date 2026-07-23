@@ -9,7 +9,9 @@ import { Card } from "@/components/ui/Card";
 import { buttonVariants } from "@/components/ui/button";
 import { inputClasses } from "@/components/ui/input";
 import { Header } from "@/components/Header";
+import { HowItWorksGate } from "@/components/HowItWorksGate";
 import { InstallPrompt } from "./InstallPrompt";
+import { OnboardingBanner } from "./OnboardingBanner";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -68,9 +70,13 @@ export default async function DashboardPage() {
   return (
     <>
       <Header />
+      <HowItWorksGate />
       <main className="flex flex-1 justify-center p-6">
         <div className="w-full max-w-4xl">
           <h1 className="text-3xl font-semibold tracking-tight text-ink">Dashboard</h1>
+
+          {/* Onboarding pointer — only while the account has no predictions. */}
+          <OnboardingBanner hasAnyPrediction={hasAnyPrediction} />
 
           {/* Quick capture — fast on-ramp into the real capture flow, not a fork of it. */}
           <form action="/predictions/new" method="GET" className="mt-8 flex flex-col gap-2 sm:flex-row">

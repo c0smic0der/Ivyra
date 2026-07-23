@@ -8,7 +8,9 @@ import { createClient } from "@/lib/supabase/server";
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/onboarding";
+  // First logins land on the dashboard; the client-side HowItWorksGate there
+  // redirects anyone who hasn't seen the /how-it-works explainer to it once.
+  const next = searchParams.get("next") ?? "/dashboard";
 
   // Supabase forwards its own errors as query params when verification fails.
   const authError = searchParams.get("error_description") ?? searchParams.get("error");

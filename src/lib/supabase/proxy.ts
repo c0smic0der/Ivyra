@@ -33,8 +33,9 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // /onboarding is intentionally NOT protected — it's a pre-signup explainer
-  // (see onboarding/page.tsx for the cookie-based "already onboarded" redirect).
+  // /how-it-works is intentionally NOT protected — it's a public explainer,
+  // shown to logged-out visitors and force-shown once on first login by the
+  // client-side HowItWorksGate (see components/HowItWorksGate.tsx).
   const path = request.nextUrl.pathname;
   const isProtected = path.startsWith("/dashboard") || path.startsWith("/predictions");
 

@@ -28,11 +28,14 @@ export default async function Home() {
 
   return (
     <>
-      <Header />
+      <Header showWordmark={false} />
       <main className="flex flex-1 justify-center p-6">
         <div className="w-full max-w-4xl">
           <div className="mx-auto max-w-2xl text-center">
-            <h1 className="text-4xl font-semibold leading-tight tracking-tight text-ink sm:text-5xl">
+            <p className="font-wordmark text-6xl font-semibold tracking-tight text-ink sm:text-7xl">
+              Calra<span className="text-accent">.</span>
+            </p>
+            <h1 className="mt-6 text-2xl font-semibold leading-tight tracking-tight text-ink sm:text-3xl">
               Find out if your gut is actually right
             </h1>
             <p className="mt-4 text-base text-ink-secondary">
