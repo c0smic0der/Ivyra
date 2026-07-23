@@ -50,64 +50,75 @@ export async function getTrackRecordPanel(draftText: string): Promise<TrackRecor
   const bounded = boundDraftText(draftText);
   if (bounded.length < MIN_DRAFT_CHARS) return { kind: "none" };
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { kind: "none" };
+  // The whole panel is a non-essential capture-time sidebar. Any failure here
+  // (auth, embedding, similarity query, base-rate lookup) degrades to "none" —
+  // the panel silently disappears rather than breaking the create form.
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { kind: "none" };
 
-  const callsToday = await countAiCallsToday(user.id);
-  if (isUnderDailyCap(callsToday)) {
-    const start = Date.now();
-    const embedding = await embedText(bounded, null);
-    if (embedding) {
-      // Only log when a real call happened — embedText is currently a stub
-      // that always returns null, so this branch is dead until it's wired
-      // up (Session 5). TODO once real: input/output token accounting and
-      // per-provider cost, not the hardcoded Haiku rate logAiCall assumes.
-      await logAiCall({
-        userId: user.id,
-        predictionId: null,
-        purpose: "track_record_embed",
-        model: "text-embedding-3-small",
-        inputTokens: 0,
-        outputTokens: 0,
-        latencyMs: Date.now() - start,
-      });
+    const callsToday = await countAiCallsToday(user.id);
+    if (isUnderDailyCap(callsToday)) {
+      const start = Date.now();
+      const embedding = await embedText(bounded, null);
+      if (embedding) {
+        // Only log when a real call happened — embedText is currently a stub
+        // that always returns null, so this branch is dead until it's wired
+        // up (Session 5). TODO once real: input/output token accounting and
+        // per-provider cost, not the hardcoded Haiku rate logAiCall assumes.
+        await logAiCall({
+          userId: user.id,
+          predictionId: null,
+          purpose: "track_record_embed",
+          model: "text-embedding-3-small",
+          inputTokens: 0,
+          outputTokens: 0,
+          latencyMs: Date.now() - start,
+        });
 
-      const matches = await findSimilarResolvedPredictions(user.id, embedding);
-      const gated = gateMatches(matches);
-      if (gated) {
-        const stats = computeTrackRecord(gated);
-        return {
-          kind: "track_record",
-          count: stats.count,
-          avgConfidencePercent: Math.round(stats.avgConfidence * 100),
-          hitRatePercent: Math.round(stats.hitRate * 100),
-          sentence: trackRecordSentence(stats),
-          matches: gated.map((match) => ({
-            text: match.text,
-            confidencePercent: Math.round(match.confidence * 100),
-            outcome: match.outcome,
-            resolvedAt: match.resolvedAt,
-          })),
-        };
+        const matches = await findSimilarResolvedPredictions(user.id, embedding);
+        const gated = gateMatches(matches);
+        if (gated) {
+          const stats = computeTrackRecord(gated);
+          return {
+            kind: "track_record",
+            count: stats.count,
+            avgConfidencePercent: Math.round(stats.avgConfidence * 100),
+            hitRatePercent: Math.round(stats.hitRate * 100),
+            sentence: trackRecordSentence(stats),
+            matches: gated.map((match) => ({
+              text: match.text,
+              confidencePercent: Math.round(match.confidence * 100),
+              outcome: match.outcome,
+              resolvedAt: match.resolvedAt,
+            })),
+          };
+        }
       }
     }
+
+    const baseRateKind = matchBaseRateKind(bounded);
+    if (!baseRateKind) return { kind: "none" };
+
+    const baseRate = await getBaseRate(baseRateKind);
+    if (!baseRate) return { kind: "none" };
+
+    const ratePercent = Math.round(baseRate.rate * 100);
+    return {
+      kind: "base_rate",
+      baseRateKind: baseRate.kind,
+      ratePercent,
+      description: baseRate.description,
+      sentence: `Outside view: similar things happen ~${ratePercent}% of the time.`,
+    };
+  } catch (error) {
+    console.error(
+      "getTrackRecordPanel: degraded to none",
+      error instanceof Error ? error.name : "UnknownError",
+    );
+    return { kind: "none" };
   }
-
-  const baseRateKind = matchBaseRateKind(bounded);
-  if (!baseRateKind) return { kind: "none" };
-
-  const baseRate = await getBaseRate(baseRateKind);
-  if (!baseRate) return { kind: "none" };
-
-  const ratePercent = Math.round(baseRate.rate * 100);
-  return {
-    kind: "base_rate",
-    baseRateKind: baseRate.kind,
-    ratePercent,
-    description: baseRate.description,
-    sentence: `Outside view: similar things happen ~${ratePercent}% of the time.`,
-  };
 }

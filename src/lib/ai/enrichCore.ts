@@ -99,3 +99,78 @@ export async function runEnrichWithRepair(
     attempts: 2,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Enrich-and-persist orchestration (DB-free, deps injected)
+//
+// The degradation-critical tail of capture-time enrichment, extracted here so
+// its catch branches are unit-testable without a DATABASE_URL or network. The
+// thin `enrichPrediction` in enrich.ts binds the real db/AI functions and keeps
+// only the daily-cap gate. Every failure mode leaves the row in a consistent,
+// fully-usable state (null category/reasoningType/embedding) and NEVER throws —
+// this runs inside `after()`, so a throw would surface as an unhandled
+// post-response rejection rather than degrade quietly.
+
+export interface EnrichPersistFields {
+  category: string | null;
+  reasoningType: string | null;
+  embedding: number[] | null;
+}
+
+export interface EnrichPersistDeps {
+  /** The enrich call (one shot + one repair). Real default: runEnrichWithRepair. */
+  runEnrich: (text: string, reasoning: string | null) => Promise<EnrichWithRepairResult>;
+  /** Embedding of prediction+reasoning. Real default: embedText. May be null (stub) or throw. */
+  embed: (text: string, reasoning: string | null) => Promise<number[] | null>;
+  /** Log the attempt to ai_calls (0/0 tokens on failure). Always called. */
+  logCall: (usage: { inputTokens: number; outputTokens: number; latencyMs: number }) => Promise<void>;
+  /** Persist the enriched fields onto the prediction row. Always called. */
+  persist: (fields: EnrichPersistFields) => Promise<void>;
+  /** Injectable clock for deterministic latency in tests. */
+  now?: () => number;
+}
+
+/**
+ * Runs the enrich → log → embed → persist tail with graceful degradation:
+ * - AI enrich failure → null category/reasoningType, 0/0 tokens logged.
+ * - Embedding failure → null embedding (every consumer already null-degrades).
+ * The attempt is ALWAYS logged (so the cap-count query reflects it) and the row
+ * is ALWAYS persisted (so it never lingers half-enriched). Resolves, never rejects.
+ */
+export async function enrichAndPersist(
+  text: string,
+  reasoning: string | null,
+  deps: EnrichPersistDeps,
+): Promise<void> {
+  const now = deps.now ?? Date.now;
+  const start = now();
+
+  let output: EnrichOutput | null = null;
+  let inputTokens = 0;
+  let outputTokens = 0;
+  try {
+    const result = await deps.runEnrich(text, reasoning);
+    output = result.output;
+    inputTokens = result.totalInputTokens;
+    outputTokens = result.totalOutputTokens;
+  } catch {
+    // Network/API failure: degrade. Row stays usable with null enrichment.
+  }
+
+  await deps.logCall({ inputTokens, outputTokens, latencyMs: now() - start });
+
+  let embedding: number[] | null = null;
+  try {
+    embedding = await deps.embed(text, reasoning);
+  } catch {
+    // Embedding provider failure: degrade to no vector. Similarity-dependent
+    // features (post-mortem cross-reference, track-record panel) already
+    // null-degrade, so the row is still fully usable.
+  }
+
+  await deps.persist({
+    category: output?.category ?? null,
+    reasoningType: output?.reasoning_type ?? null,
+    embedding,
+  });
+}

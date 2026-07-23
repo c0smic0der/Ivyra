@@ -44,5 +44,21 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // /admin is owner-only. Gate it HERE (before the page loads) so a non-admin —
+  // whether logged out, the demo user, or any other account — gets the standard
+  // not-found page, byte-for-byte the same category as any unmatched URL: no
+  // admin route content, no admin-segment RSC payload, no login redirect that
+  // would betray the route exists. Rewriting (not redirecting) keeps the URL and
+  // renders Next's 404 for an unmatched path; the in-page notFound() stays as
+  // defense-in-depth if this matcher ever changes.
+  if (path === "/admin" || path.startsWith("/admin/")) {
+    const adminUserId = process.env.ADMIN_USER_ID;
+    if (!adminUserId || !user || user.id !== adminUserId) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/_not-found";
+      return NextResponse.rewrite(url);
+    }
+  }
+
   return response;
 }

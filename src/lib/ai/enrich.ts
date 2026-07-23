@@ -2,8 +2,7 @@ import { and, eq, gte, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { HAIKU_INPUT_COST_PER_TOKEN, HAIKU_MODEL, HAIKU_OUTPUT_COST_PER_TOKEN } from "@/lib/ai/anthropic";
 import { embedText } from "@/lib/ai/embedding";
-import { isUnderDailyCap, runEnrichWithRepair, type EnrichWithRepairResult } from "@/lib/ai/enrichCore";
-import type { EnrichOutput } from "@/lib/ai/enrichSchema";
+import { enrichAndPersist, isUnderDailyCap, runEnrichWithRepair } from "@/lib/ai/enrichCore";
 
 // DB-touching orchestration for capture-time enrichment. The pure/injectable
 // logic (cap boundary check, repair-retry) lives in enrichCore.ts so it can
@@ -19,7 +18,7 @@ export async function countAiCallsToday(userId: string): Promise<number> {
   return result?.count ?? 0;
 }
 
-type AiCallPurpose =
+export type AiCallPurpose =
   | "enrich"
   | "postmortem"
   | "monthly_insight"
@@ -100,7 +99,12 @@ export async function finalizeAiCall(
     .where(eq(schema.aiCalls.id, id));
 }
 
-/** Fired from actions.ts via after() — never blocks the initial row write. */
+/**
+ * Fired from actions.ts via after() — never blocks the initial row write.
+ * Keeps only the daily-cap gate here; the degradation-critical tail (enrich →
+ * log → embed → persist) lives in the DB-free, unit-tested `enrichAndPersist`,
+ * to which this binds the real db/AI functions.
+ */
 export async function enrichPrediction(params: {
   userId: string;
   predictionId: string;
@@ -114,39 +118,31 @@ export async function enrichPrediction(params: {
     return;
   }
 
-  const start = Date.now();
-  let output: EnrichOutput | null = null;
-  let totalInputTokens = 0;
-  let totalOutputTokens = 0;
-  try {
-    const result: EnrichWithRepairResult = await runEnrichWithRepair(params.text, params.reasoning);
-    output = result.output;
-    totalInputTokens = result.totalInputTokens;
-    totalOutputTokens = result.totalOutputTokens;
-  } catch {
-    // Network/API failure: degrade gracefully. Still log the attempt below
-    // (0/0 tokens) so the cap-counting query reflects it happened.
-  }
-  const latencyMs = Date.now() - start;
-
-  await logAiCall({
-    userId: params.userId,
-    predictionId: params.predictionId,
-    purpose: "enrich",
-    model: HAIKU_MODEL,
-    inputTokens: totalInputTokens,
-    outputTokens: totalOutputTokens,
-    latencyMs,
+  await enrichAndPersist(params.text, params.reasoning, {
+    runEnrich: runEnrichWithRepair,
+    embed: embedText,
+    logCall: (usage) =>
+      logAiCall({
+        userId: params.userId,
+        predictionId: params.predictionId,
+        purpose: "enrich",
+        model: HAIKU_MODEL,
+        ...usage,
+      }),
+    persist: (fields) =>
+      db
+        .update(schema.predictions)
+        .set({
+          category: fields.category,
+          reasoningType: fields.reasoningType,
+          embedding: fields.embedding,
+        })
+        .where(
+          and(
+            eq(schema.predictions.id, params.predictionId),
+            eq(schema.predictions.userId, params.userId),
+          ),
+        )
+        .then(() => undefined),
   });
-
-  const embedding = await embedText(params.text, params.reasoning);
-
-  await db
-    .update(schema.predictions)
-    .set({
-      category: output?.category ?? null,
-      reasoningType: output?.reasoning_type ?? null,
-      embedding,
-    })
-    .where(and(eq(schema.predictions.id, params.predictionId), eq(schema.predictions.userId, params.userId)));
 }

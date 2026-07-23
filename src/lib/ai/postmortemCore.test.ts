@@ -1,5 +1,12 @@
-import { describe, expect, it } from "vitest";
-import { buildPostmortemPrompt, isMiss, type PostmortemInputs } from "./postmortemCore";
+import { describe, expect, it, vi } from "vitest";
+import {
+  buildPostmortemPrompt,
+  consumePostmortemStream,
+  isMiss,
+  type ModelStream,
+  type PostmortemInputs,
+  type PostmortemStreamDeps,
+} from "./postmortemCore";
 
 describe("isMiss — a miss is the wrong side of the 0.25 baseline", () => {
   it("is a miss when confident and wrong", () => {
@@ -65,5 +72,113 @@ describe("buildPostmortemPrompt — anchors only to user-written text", () => {
     expect(prompt).toContain("similar past misses");
     expect(prompt).toContain("The deck project finishes on time");
     expect(prompt).toContain("80% confident");
+  });
+});
+
+describe("consumePostmortemStream — graceful degradation (streaming never rejects)", () => {
+  // Builds a ModelStream from a fixed chunk list; `usage` resolves after drain.
+  function streamFrom(chunks: string[], usage = { inputTokens: 100, outputTokens: 20 }): ModelStream {
+    return {
+      chunks: (async function* () {
+        for (const c of chunks) yield c;
+      })(),
+      usage: async () => usage,
+    };
+  }
+
+  // A stream that yields some chunks then throws mid-iteration (API drop).
+  function throwingStream(before: string[]): ModelStream {
+    return {
+      chunks: (async function* () {
+        for (const c of before) yield c;
+        throw new Error("connection reset");
+      })(),
+      usage: async () => ({ inputTokens: 0, outputTokens: 0 }),
+    };
+  }
+
+  // Returns freshly-typed mocks (no spread widening); tests override behavior by
+  // mutating a specific mock (e.g. deps.persist.mockRejectedValue).
+  function makeDeps(open: () => ModelStream, now?: () => number) {
+    return {
+      open,
+      emit: vi.fn<PostmortemStreamDeps["emit"]>(),
+      persist: vi.fn<PostmortemStreamDeps["persist"]>().mockResolvedValue(),
+      finalize: vi.fn<PostmortemStreamDeps["finalize"]>().mockResolvedValue(),
+      now,
+    };
+  }
+
+  it("happy path: emits deltas in order, persists the joined text once, finalizes with usage", async () => {
+    const deps = makeDeps(() => streamFrom(["Your reasoning ", "missed the dependency."]));
+    await consumePostmortemStream(deps);
+
+    expect(deps.emit.mock.calls.map((c) => c[0])).toEqual(["Your reasoning ", "missed the dependency."]);
+    expect(deps.persist).toHaveBeenCalledOnce();
+    expect(deps.persist.mock.calls[0][0]).toBe("Your reasoning missed the dependency.");
+    expect(deps.finalize).toHaveBeenCalledOnce();
+    expect(deps.finalize.mock.calls[0][0]).toMatchObject({ inputTokens: 100, outputTokens: 20 });
+  });
+
+  it("stream throws mid-way: emits pre-throw chunks, does NOT persist, still finalizes 0/0", async () => {
+    const deps = makeDeps(() => throwingStream(["Partial text "]));
+
+    await expect(consumePostmortemStream(deps)).resolves.toBeUndefined();
+
+    expect(deps.emit.mock.calls.map((c) => c[0])).toEqual(["Partial text "]);
+    expect(deps.persist).not.toHaveBeenCalled();
+    expect(deps.finalize).toHaveBeenCalledOnce();
+    expect(deps.finalize.mock.calls[0][0]).toMatchObject({ inputTokens: 0, outputTokens: 0 });
+  });
+
+  it("empty stream: never persists (nothing to store) but still finalizes", async () => {
+    const deps = makeDeps(() => streamFrom([]));
+    await consumePostmortemStream(deps);
+
+    expect(deps.persist).not.toHaveBeenCalled();
+    expect(deps.finalize).toHaveBeenCalledOnce();
+  });
+
+  it("whitespace-only stream: does not persist (trimmed to empty)", async () => {
+    const deps = makeDeps(() => streamFrom(["  ", "\n"]));
+    await consumePostmortemStream(deps);
+
+    expect(deps.persist).not.toHaveBeenCalled();
+    expect(deps.finalize).toHaveBeenCalledOnce();
+  });
+
+  it("usage() rejects after a clean drain: does not persist, finalizes 0/0", async () => {
+    const stream: ModelStream = {
+      chunks: (async function* () {
+        yield "Some text";
+      })(),
+      usage: async () => {
+        throw new Error("finalMessage failed");
+      },
+    };
+    const deps = makeDeps(() => stream);
+
+    await expect(consumePostmortemStream(deps)).resolves.toBeUndefined();
+    expect(deps.persist).not.toHaveBeenCalled();
+    expect(deps.finalize.mock.calls[0][0]).toMatchObject({ inputTokens: 0, outputTokens: 0 });
+  });
+
+  it("persist rejects: finalize still runs (persist is in try, finalize in finally)", async () => {
+    const deps = makeDeps(() => streamFrom(["text"]));
+    deps.persist.mockRejectedValue(new Error("db down"));
+
+    await expect(consumePostmortemStream(deps)).resolves.toBeUndefined();
+    expect(deps.finalize).toHaveBeenCalledOnce();
+  });
+
+  it("orders emit → persist → finalize and reports injected-clock latency", async () => {
+    const now = vi.fn<() => number>().mockReturnValueOnce(2000).mockReturnValueOnce(2500);
+    const deps = makeDeps(() => streamFrom(["a", "b"]), now);
+
+    await consumePostmortemStream(deps);
+
+    expect(deps.emit.mock.invocationCallOrder[0]).toBeLessThan(deps.persist.mock.invocationCallOrder[0]);
+    expect(deps.persist.mock.invocationCallOrder[0]).toBeLessThan(deps.finalize.mock.invocationCallOrder[0]);
+    expect(deps.finalize.mock.calls[0][0].latencyMs).toBe(500);
   });
 });

@@ -1,5 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
-import { isUnderDailyCap, runEnrichWithRepair, type ModelCallResult } from "@/lib/ai/enrichCore";
+import {
+  enrichAndPersist,
+  isUnderDailyCap,
+  runEnrichWithRepair,
+  type EnrichPersistDeps,
+  type EnrichWithRepairResult,
+  type ModelCallResult,
+} from "@/lib/ai/enrichCore";
 
 describe("isUnderDailyCap — cap enforcement (pure)", () => {
   it("allows the first call of the day (0 made)", () => {
@@ -108,5 +115,118 @@ describe("runEnrichWithRepair — JSON schema validation + one repair retry", ()
     // gives up after exactly one repair attempt.
     expect(result.attempts).toBe(2);
     expect(result.output).toBeNull();
+  });
+});
+
+describe("enrichAndPersist — graceful degradation (AI failure never breaks the row)", () => {
+  const okEnrich = (
+    output: EnrichWithRepairResult["output"],
+    inputTokens = 100,
+    outputTokens = 20,
+  ): EnrichWithRepairResult => ({
+    output,
+    totalInputTokens: inputTokens,
+    totalOutputTokens: outputTokens,
+    attempts: 1,
+  });
+
+  // Returns freshly-typed mocks (no spread widening, so `.mock` stays typed);
+  // tests override a specific dep's behavior by calling e.g. deps.embed.mockRejectedValue.
+  function makeDeps(now?: () => number) {
+    return {
+      runEnrich: vi
+        .fn<EnrichPersistDeps["runEnrich"]>()
+        .mockResolvedValue(okEnrich({ category: "work", reasoning_type: "base_rate" })),
+      embed: vi.fn<EnrichPersistDeps["embed"]>().mockResolvedValue([0.1, 0.2, 0.3]),
+      logCall: vi.fn<EnrichPersistDeps["logCall"]>().mockResolvedValue(),
+      persist: vi.fn<EnrichPersistDeps["persist"]>().mockResolvedValue(),
+      now,
+    };
+  }
+
+  it("happy path: logs real tokens, persists enrichment + embedding", async () => {
+    const deps = makeDeps();
+    await enrichAndPersist("I ship the report by Friday", "team is on track", deps);
+
+    expect(deps.logCall).toHaveBeenCalledOnce();
+    expect(deps.logCall.mock.calls[0][0]).toMatchObject({ inputTokens: 100, outputTokens: 20 });
+    expect(deps.embed).toHaveBeenCalledWith("I ship the report by Friday", "team is on track");
+    expect(deps.persist).toHaveBeenCalledOnce();
+    expect(deps.persist.mock.calls[0][0]).toEqual({
+      category: "work",
+      reasoningType: "base_rate",
+      embedding: [0.1, 0.2, 0.3],
+    });
+  });
+
+  it("AI call rejects: still logs 0/0 tokens, persists all-null, does not throw", async () => {
+    const deps = makeDeps();
+    deps.runEnrich.mockRejectedValue(new Error("API down"));
+
+    await expect(enrichAndPersist("Some prediction", null, deps)).resolves.toBeUndefined();
+
+    expect(deps.logCall.mock.calls[0][0]).toMatchObject({ inputTokens: 0, outputTokens: 0 });
+    // Embedding is independent of enrichment, so it still runs and persists.
+    expect(deps.persist.mock.calls[0][0]).toEqual({
+      category: null,
+      reasoningType: null,
+      embedding: [0.1, 0.2, 0.3],
+    });
+  });
+
+  it("embed rejects: persists null embedding but keeps successful enrichment, does not throw", async () => {
+    const deps = makeDeps();
+    deps.embed.mockRejectedValue(new Error("embed provider down"));
+
+    await expect(enrichAndPersist("Some prediction", null, deps)).resolves.toBeUndefined();
+
+    expect(deps.logCall.mock.calls[0][0]).toMatchObject({ inputTokens: 100, outputTokens: 20 });
+    expect(deps.persist.mock.calls[0][0]).toEqual({
+      category: "work",
+      reasoningType: "base_rate",
+      embedding: null,
+    });
+  });
+
+  it("both AI and embed reject: persists all-null with 0/0 tokens", async () => {
+    const deps = makeDeps();
+    deps.runEnrich.mockRejectedValue(new Error("x"));
+    deps.embed.mockRejectedValue(new Error("y"));
+
+    await enrichAndPersist("Some prediction", null, deps);
+
+    expect(deps.logCall.mock.calls[0][0]).toMatchObject({ inputTokens: 0, outputTokens: 0 });
+    expect(deps.persist.mock.calls[0][0]).toEqual({
+      category: null,
+      reasoningType: null,
+      embedding: null,
+    });
+  });
+
+  it("null embedding (the current stub) persists as null without error", async () => {
+    const deps = makeDeps();
+    deps.embed.mockResolvedValue(null);
+
+    await enrichAndPersist("Some prediction", null, deps);
+
+    expect(deps.persist.mock.calls[0][0].embedding).toBeNull();
+  });
+
+  it("always logs BEFORE persisting, so the cap row exists even if persist later fails", async () => {
+    const deps = makeDeps();
+    await enrichAndPersist("Some prediction", null, deps);
+
+    expect(deps.logCall.mock.invocationCallOrder[0]).toBeLessThan(
+      deps.persist.mock.invocationCallOrder[0],
+    );
+  });
+
+  it("reports deterministic latency from the injected clock", async () => {
+    const now = vi.fn<() => number>().mockReturnValueOnce(1000).mockReturnValueOnce(1400);
+    const deps = makeDeps(now);
+
+    await enrichAndPersist("Some prediction", null, deps);
+
+    expect(deps.logCall.mock.calls[0][0].latencyMs).toBe(400);
   });
 });

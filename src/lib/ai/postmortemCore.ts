@@ -91,3 +91,75 @@ export function buildPostmortemPrompt(inputs: PostmortemInputs): string {
 
   return lines.join("\n");
 }
+
+// ---------------------------------------------------------------------------
+// Streaming consumption + persist (DB-free, deps injected)
+//
+// The degradation-critical body of the post-mortem route, extracted so its
+// mid-stream-failure and empty-completion branches are unit-testable without a
+// DATABASE_URL, the Anthropic SDK, or a real ReadableStream. The route builds a
+// `ModelStream` adapter over `client.messages.stream(...)` and binds the real
+// emit/persist/finalize; this owns the "when to persist, always finalize" logic.
+
+export interface StreamUsage {
+  inputTokens: number;
+  outputTokens: number;
+}
+
+/** SDK-agnostic view of a streaming completion: text deltas + final usage. */
+export interface ModelStream {
+  /** Yields text deltas in order. May throw mid-iteration on an API failure. */
+  chunks: AsyncIterable<string>;
+  /** Resolves the token usage once the stream has drained (finalMessage). */
+  usage: () => Promise<StreamUsage>;
+}
+
+export interface PostmortemStreamDeps {
+  /** Opens the model stream (the SDK→ModelStream adapter, in the route). */
+  open: () => ModelStream;
+  /** Push a text delta to the client (route: controller.enqueue). */
+  emit: (text: string) => void;
+  /** Persist the completed post-mortem text (route: db.update). Only on non-empty completion. */
+  persist: (fullText: string) => Promise<void>;
+  /** Fill the reserved ai_calls row (route: finalizeAiCall). ALWAYS called. */
+  finalize: (result: { inputTokens: number; outputTokens: number; latencyMs: number }) => Promise<void>;
+  /** Injectable clock for deterministic latency in tests. */
+  now?: () => number;
+}
+
+/**
+ * Streams the post-mortem to the client and persists it once, with graceful
+ * degradation: a mid-stream API failure stops cleanly (nothing persisted, so a
+ * retry regenerates — the client keeps whatever streamed). `finalize` runs in a
+ * `finally` so the reserved cap slot is ALWAYS closed (0/0 tokens on failure,
+ * the conservative choice for a cost cap). Resolves, never rejects.
+ */
+export async function consumePostmortemStream(deps: PostmortemStreamDeps): Promise<void> {
+  const now = deps.now ?? Date.now;
+  const start = now();
+  let full = "";
+  let inputTokens = 0;
+  let outputTokens = 0;
+
+  try {
+    const stream = deps.open();
+    for await (const delta of stream.chunks) {
+      full += delta;
+      deps.emit(delta);
+    }
+    const usage = await stream.usage();
+    inputTokens = usage.inputTokens;
+    outputTokens = usage.outputTokens;
+
+    // Persist once, only on a real completion — this is what makes a revisit
+    // return the stored text instead of regenerating and re-charging.
+    if (full.trim().length > 0) {
+      await deps.persist(full);
+    }
+  } catch {
+    // Network/API failure mid-stream (or a failed persist): stop cleanly.
+    // Nothing (further) persisted, so a retry regenerates.
+  } finally {
+    await deps.finalize({ inputTokens, outputTokens, latencyMs: now() - start });
+  }
+}

@@ -40,20 +40,29 @@ export async function createPrediction(
 
   // Write the row immediately — status=open, criteria frozen at creation.
   // category/reasoningType/embedding start null and are enriched below,
-  // entirely outside this request/response cycle.
-  const [row] = await db
-    .insert(schema.predictions)
-    .values({
-      userId: user.id,
-      text: input.text,
-      reasoning: input.reasoning || null,
-      planOrDisconfirm: input.planOrDisconfirm || null,
-      predictionKind: input.predictionKind,
-      confidence: confidencePercentToDbString(input.confidencePercent),
-      resolutionDate: input.resolutionDate,
-      status: "open",
-    })
-    .returning({ id: schema.predictions.id });
+  // entirely outside this request/response cycle. A DB failure here returns a
+  // friendly form-level error (the `formError` slot PredictionForm renders)
+  // rather than throwing an unhandled 500 at the user.
+  let predictionId: string;
+  try {
+    const [row] = await db
+      .insert(schema.predictions)
+      .values({
+        userId: user.id,
+        text: input.text,
+        reasoning: input.reasoning || null,
+        planOrDisconfirm: input.planOrDisconfirm || null,
+        predictionKind: input.predictionKind,
+        confidence: confidencePercentToDbString(input.confidencePercent),
+        resolutionDate: input.resolutionDate,
+        status: "open",
+      })
+      .returning({ id: schema.predictions.id });
+    predictionId = row.id;
+  } catch (error) {
+    console.error("createPrediction: insert failed", error instanceof Error ? error.name : "UnknownError");
+    return { formError: "Couldn't save your prediction. Please try again." };
+  }
 
   // Background enrichment. after() runs post-response (still fires even
   // though we redirect below) — no cookies/session needed here, since we
@@ -61,11 +70,13 @@ export async function createPrediction(
   after(async () => {
     await enrichPrediction({
       userId: user.id,
-      predictionId: row.id,
+      predictionId,
       text: input.text,
       reasoning: input.reasoning || null,
     });
   });
 
+  // OUTSIDE the try: Next implements redirect() by throwing a special error —
+  // catching it would swallow the navigation.
   redirect("/dashboard");
 }

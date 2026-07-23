@@ -45,9 +45,20 @@ export async function GET(request: Request) {
     return new Response(null, { status: 401 });
   }
 
-  const dueRows = notYetReminded(await findPredictionsDueToday(dueDateString(new Date())));
+  let dueRows: DuePrediction[];
+  let siteUrl: string;
+  try {
+    dueRows = notYetReminded(await findPredictionsDueToday(dueDateString(new Date())));
+    siteUrl = resolveSiteUrl();
+  } catch (error) {
+    // Top-level fetch / config failure (DB down, SITE_URL unset in prod). Log
+    // the class name only (privacy) and fail the run with a 500 — the per-user
+    // send loop below is already individually guarded.
+    const kind = error instanceof Error ? error.name : "UnknownError";
+    console.error("reminders: run failed before sending", kind);
+    return NextResponse.json({ error: "internal_error" }, { status: 500 });
+  }
   const byUser = groupDueByUser(dueRows);
-  const siteUrl = resolveSiteUrl();
 
   let usersEmailed = 0;
   const resend = getResendClient();
