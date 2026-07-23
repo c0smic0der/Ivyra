@@ -12,7 +12,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:seed-dev": "node scripts/seed-dev.js",
-    "seed": "tsx scripts/seed-demo.ts"
+    "seed": "tsx scripts/seed-demo.ts",
+    "backfill": "tsx scripts/backfill-embeddings.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.112.5",

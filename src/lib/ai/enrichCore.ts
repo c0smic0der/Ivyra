@@ -111,6 +111,50 @@ export async function runEnrichWithRepair(
 // this runs inside `after()`, so a throw would surface as an unhandled
 // post-response rejection rather than degrade quietly.
 
+import type { EmbedResult } from "@/lib/ai/embedding";
+
+export interface EmbedAndLogDeps {
+  /** The usage-returning embed call. Real default: embedTextWithUsage. May return null or throw. */
+  embed: (text: string, reasoning: string | null) => Promise<EmbedResult | null>;
+  /** Log the embedding to ai_calls. Bound in enrich.ts with the OpenAI model/cost/purpose. */
+  logCall: (usage: { inputTokens: number; outputTokens: number; latencyMs: number }) => Promise<void>;
+  /** Injectable clock for deterministic latency in tests. */
+  now?: () => number;
+}
+
+/**
+ * Embed text and, ONLY when a real vector comes back, log the call to ai_calls.
+ *
+ * A null result (no API key, provider failure) means no cost was incurred, so
+ * nothing is logged and no daily-cap slot is spent. A thrown embed degrades to
+ * null too — this NEVER throws, so a failed embedding can never surface as an
+ * unhandled rejection inside the post-response `after()` where capture runs it.
+ * Returns the vector or null; the caller persists whatever it gets.
+ */
+export async function embedAndLog(
+  text: string,
+  reasoning: string | null,
+  deps: EmbedAndLogDeps,
+): Promise<number[] | null> {
+  const now = deps.now ?? Date.now;
+  const start = now();
+
+  let result: EmbedResult | null = null;
+  try {
+    result = await deps.embed(text, reasoning);
+  } catch {
+    return null;
+  }
+  if (!result) return null;
+
+  await deps.logCall({
+    inputTokens: result.inputTokens,
+    outputTokens: 0,
+    latencyMs: now() - start,
+  });
+  return result.embedding;
+}
+
 export interface EnrichPersistFields {
   category: string | null;
   reasoningType: string | null;

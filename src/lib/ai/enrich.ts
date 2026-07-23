@@ -1,8 +1,12 @@
 import { and, eq, gte, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { HAIKU_INPUT_COST_PER_TOKEN, HAIKU_MODEL, HAIKU_OUTPUT_COST_PER_TOKEN } from "@/lib/ai/anthropic";
-import { embedText } from "@/lib/ai/embedding";
-import { enrichAndPersist, isUnderDailyCap, runEnrichWithRepair } from "@/lib/ai/enrichCore";
+import {
+  embeddingCostUsd,
+  embedTextWithUsage,
+  OPENAI_EMBEDDING_MODEL,
+} from "@/lib/ai/embedding";
+import { embedAndLog, enrichAndPersist, isUnderDailyCap, runEnrichWithRepair } from "@/lib/ai/enrichCore";
 
 // DB-touching orchestration for capture-time enrichment. The pure/injectable
 // logic (cap boundary check, repair-retry) lives in enrichCore.ts so it can
@@ -20,10 +24,12 @@ export async function countAiCallsToday(userId: string): Promise<number> {
 
 export type AiCallPurpose =
   | "enrich"
+  | "enrich_embed"
   | "postmortem"
   | "monthly_insight"
   | "reference_class"
-  | "track_record_embed";
+  | "track_record_embed"
+  | "backfill_embed";
 
 function costFor(inputTokens: number, outputTokens: number): string {
   return (
@@ -40,6 +46,10 @@ export async function logAiCall(params: {
   inputTokens: number;
   outputTokens: number;
   latencyMs: number;
+  // Explicit cost override. Anthropic calls omit it (cost derives from Haiku
+  // rates); embedding calls pass their OpenAI-derived cost, since the per-token
+  // rate differs by ~50x and must not be computed from the Haiku assumption.
+  costUsd?: string;
 }): Promise<void> {
   await db.insert(schema.aiCalls).values({
     userId: params.userId,
@@ -48,7 +58,7 @@ export async function logAiCall(params: {
     model: params.model,
     inputTokens: params.inputTokens,
     outputTokens: params.outputTokens,
-    costUsd: costFor(params.inputTokens, params.outputTokens),
+    costUsd: params.costUsd ?? costFor(params.inputTokens, params.outputTokens),
     latencyMs: params.latencyMs,
   });
 }
@@ -120,7 +130,22 @@ export async function enrichPrediction(params: {
 
   await enrichAndPersist(params.text, params.reasoning, {
     runEnrich: runEnrichWithRepair,
-    embed: embedText,
+    // Embedding is its own provider call (OpenAI) with its own cost, so it gets
+    // its own ai_calls row via embedAndLog — logged only when a real vector
+    // comes back (§9.7). Failures/nulls degrade to a null embedding column.
+    embed: (text, reasoning) =>
+      embedAndLog(text, reasoning, {
+        embed: embedTextWithUsage,
+        logCall: (usage) =>
+          logAiCall({
+            userId: params.userId,
+            predictionId: params.predictionId,
+            purpose: "enrich_embed",
+            model: OPENAI_EMBEDDING_MODEL,
+            costUsd: embeddingCostUsd(usage.inputTokens),
+            ...usage,
+          }),
+      }),
     logCall: (usage) =>
       logAiCall({
         userId: params.userId,

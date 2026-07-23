@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  embedAndLog,
   enrichAndPersist,
   isUnderDailyCap,
   runEnrichWithRepair,
+  type EmbedAndLogDeps,
   type EnrichPersistDeps,
   type EnrichWithRepairResult,
   type ModelCallResult,
@@ -115,6 +117,55 @@ describe("runEnrichWithRepair — JSON schema validation + one repair retry", ()
     // gives up after exactly one repair attempt.
     expect(result.attempts).toBe(2);
     expect(result.output).toBeNull();
+  });
+});
+
+describe("embedAndLog — cost logging (cap) + degradation (never blocks a save)", () => {
+  function makeDeps(now?: () => number) {
+    return {
+      embed: vi
+        .fn<EmbedAndLogDeps["embed"]>()
+        .mockResolvedValue({ embedding: [0.1, 0.2, 0.3], inputTokens: 17 }),
+      logCall: vi.fn<EmbedAndLogDeps["logCall"]>().mockResolvedValue(),
+      now,
+    };
+  }
+
+  it("logs the call ONLY on success, so real embeddings count against the daily cap", async () => {
+    const deps = makeDeps();
+
+    const vector = await embedAndLog("ship by Friday", "on track", deps);
+
+    expect(vector).toEqual([0.1, 0.2, 0.3]);
+    expect(deps.logCall).toHaveBeenCalledOnce();
+    expect(deps.logCall.mock.calls[0][0]).toMatchObject({ inputTokens: 17, outputTokens: 0 });
+  });
+
+  it("does NOT log when there's no embedding (no key / provider off) — no wasted cap slot", async () => {
+    const deps = makeDeps();
+    deps.embed.mockResolvedValue(null);
+
+    const vector = await embedAndLog("anything", null, deps);
+
+    expect(vector).toBeNull();
+    expect(deps.logCall).not.toHaveBeenCalled();
+  });
+
+  it("a throwing embed degrades to null without throwing (can't block a save)", async () => {
+    const deps = makeDeps();
+    deps.embed.mockRejectedValue(new Error("provider exploded"));
+
+    await expect(embedAndLog("anything", null, deps)).resolves.toBeNull();
+    expect(deps.logCall).not.toHaveBeenCalled();
+  });
+
+  it("reports deterministic latency from the injected clock", async () => {
+    const now = vi.fn<() => number>().mockReturnValueOnce(1000).mockReturnValueOnce(1250);
+    const deps = makeDeps(now);
+
+    await embedAndLog("anything", null, deps);
+
+    expect(deps.logCall.mock.calls[0][0].latencyMs).toBe(250);
   });
 });
 

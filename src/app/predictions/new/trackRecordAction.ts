@@ -1,6 +1,6 @@
 "use server";
 
-import { embedText } from "@/lib/ai/embedding";
+import { embeddingCostUsd, embedTextWithUsage, OPENAI_EMBEDDING_MODEL } from "@/lib/ai/embedding";
 import { countAiCallsToday, logAiCall } from "@/lib/ai/enrich";
 import { isUnderDailyCap } from "@/lib/ai/enrichCore";
 import { createClient } from "@/lib/supabase/server";
@@ -63,23 +63,23 @@ export async function getTrackRecordPanel(draftText: string): Promise<TrackRecor
     const callsToday = await countAiCallsToday(user.id);
     if (isUnderDailyCap(callsToday)) {
       const start = Date.now();
-      const embedding = await embedText(bounded, null);
-      if (embedding) {
-        // Only log when a real call happened — embedText is currently a stub
-        // that always returns null, so this branch is dead until it's wired
-        // up (Session 5). TODO once real: input/output token accounting and
-        // per-provider cost, not the hardcoded Haiku rate logAiCall assumes.
+      const embedResult = await embedTextWithUsage(bounded, null);
+      if (embedResult) {
+        // Log only when a real embedding happened (null degrades to base-rate
+        // below without logging). Real OpenAI token count + per-provider cost —
+        // not the Haiku rate logAiCall would otherwise assume.
         await logAiCall({
           userId: user.id,
           predictionId: null,
           purpose: "track_record_embed",
-          model: "text-embedding-3-small",
-          inputTokens: 0,
+          model: OPENAI_EMBEDDING_MODEL,
+          inputTokens: embedResult.inputTokens,
           outputTokens: 0,
+          costUsd: embeddingCostUsd(embedResult.inputTokens),
           latencyMs: Date.now() - start,
         });
 
-        const matches = await findSimilarResolvedPredictions(user.id, embedding);
+        const matches = await findSimilarResolvedPredictions(user.id, embedResult.embedding);
         const gated = gateMatches(matches);
         if (gated) {
           const stats = computeTrackRecord(gated);

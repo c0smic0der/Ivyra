@@ -42,7 +42,7 @@ export default function LoginPage() {
   return (
     <main className="flex flex-1 items-center justify-center bg-canvas p-6">
       <div className="w-full max-w-sm">
-        <h1 className="text-2xl font-semibold tracking-tight text-ink">Sign in to Caliber</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-ink">Sign in to Calra</h1>
         <p className="mt-2 text-sm text-ink-secondary">
           Enter your email and we&apos;ll send you a magic link.
         </p>

@@ -8,7 +8,7 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
-const DISMISS_KEY = "caliber:install-prompt-dismissed";
+const DISMISS_KEY = "calra:install-prompt-dismissed";
 const dismissListeners = new Set<() => void>();
 
 function subscribeDismissed(listener: () => void) {
