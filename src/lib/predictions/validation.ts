@@ -19,18 +19,30 @@ export const createPredictionSchema = z
       .int("Confidence must be a whole number")
       .min(1, "Confidence must be at least 1%")
       .max(99, "Confidence must be at most 99%"),
-    // Native <input type="date"> sends "YYYY-MM-DD".
+    // Native <input type="date"> sends a bare "YYYY-MM-DD" calendar date. Pin
+    // the shape to exactly that: a strict format check plus a round-trip through
+    // UTC rejects both non-ISO strings Date.parse would otherwise accept (e.g.
+    // "07/24/2026") and impossible dates that silently roll over ("2099-13-40").
+    // Guaranteeing real, zero-padded ISO dates is also what lets the future-date
+    // rule below compare them as plain strings.
     resolutionDate: z
       .string()
-      .refine((s) => !Number.isNaN(Date.parse(s)), "Invalid date"),
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date")
+      .refine((s) => {
+        const d = new Date(`${s}T00:00:00Z`);
+        return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
+      }, "Invalid date"),
   })
   .refine(
-    (data) => {
-      const resolutionMidnight = new Date(`${data.resolutionDate}T00:00:00`);
-      const todayMidnight = new Date();
-      todayMidnight.setHours(0, 0, 0, 0);
-      return resolutionMidnight.getTime() > todayMidnight.getTime();
-    },
+    // Compare as UTC calendar dates — the ONE convention the whole system uses:
+    // `predictions.resolution_date` is a Postgres `date` (no time), and the
+    // reminders cron matches "due today" via dueDateString(now) = the UTC date
+    // (see remindersCore.ts). The previous local-midnight comparison drifted
+    // with the host's timezone, so capture and the cron could disagree on which
+    // calendar day a prediction belonged to, and "today" was accepted/rejected
+    // differently depending on the server's offset. Zero-padded ISO dates sort
+    // lexicographically == chronologically, so a string compare is exact here.
+    (data) => data.resolutionDate > new Date().toISOString().slice(0, 10),
     {
       message: "Resolution date must be in the future",
       path: ["resolutionDate"],
