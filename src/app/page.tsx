@@ -108,6 +108,56 @@ function LegendDot({ className }: { className: string }) {
   return <span className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full ${className}`} />;
 }
 
+// Research the loop is built on. Every finding is paraphrased (no text/figures
+// reproduced) and carries a visible, followable citation. These cite findings
+// only — no researcher, institution, or publication endorses or is affiliated
+// with this app. Figures are verified against the primary sources:
+//  · 6–11% accuracy gain from <1h training, every tournament year — the paper's
+//    own abstract (Chang et al., 2016).
+//  · Weather-forecaster reliability — Murphy & Winkler (1977).
+//  · Score + bias readout alone did NOT improve calibration — Martin & Mandel (2025).
+const EVIDENCE: { headline: string; body: React.ReactNode; cite: string; href: string }[] = [
+  {
+    headline: "Training moves the needle",
+    body: (
+      <>
+        In a four-year, government-sponsored forecasting tournament, people who did a short
+        probabilistic-reasoning exercise — under an hour — went on to make{" "}
+        <span className="font-medium text-ink">about 6–11% more accurate</span> predictions than an
+        untrained group, in every year of the study.
+      </>
+    ),
+    cite: "Chang, Chen, Mellers & Tetlock — Judgment and Decision Making (2016)",
+    href: "https://www.cambridge.org/core/journals/judgment-and-decision-making/article/developing-expert-political-judgment-the-impact-of-training-and-practice-on-judgmental-accuracy-in-geopolitical-forecasting-tournaments/123EB18425391D05FA6581FDBB3F309F",
+  },
+  {
+    headline: "The feedback loop works in the wild",
+    body: (
+      <>
+        Weather forecasters are the classic case: their probability forecasts are strikingly
+        well-calibrated — when they say a{" "}
+        <span className="font-medium text-ink">70% chance of rain, it rains on about 70%</span> of
+        those days — a benchmark of what steady, scored feedback produces.
+      </>
+    ),
+    cite: "Murphy & Winkler — J. Royal Statistical Society, Series C (1977)",
+    href: "https://rss.onlinelibrary.wiley.com/doi/abs/10.2307/2346866",
+  },
+  {
+    headline: "But a score alone isn't enough",
+    body: (
+      <>
+        A 2025 experiment found that showing people their calibration score and an
+        over/under-confidence readout{" "}
+        <span className="font-medium text-ink">did not, on its own, improve their calibration</span>.
+        A bare number doesn&apos;t teach — which is exactly why Calra never stops at one.
+      </>
+    ),
+    cite: "Martin & Mandel — Futures & Foresight Science (2025)",
+    href: "https://onlinelibrary.wiley.com/doi/full/10.1002/ffo2.199",
+  },
+];
+
 export default async function Home() {
   const supabase = await createClient();
   const {
@@ -328,6 +378,48 @@ export default async function Home() {
                 This isn&apos;t your data yet — it&apos;s what a calibration curve looks like.
               </p>
             </div>
+          </div>
+        </section>
+
+        {/* GROUNDED IN RESEARCH */}
+        <section className="w-full px-6 py-16">
+          <div className="mx-auto max-w-5xl">
+            <div className="text-center">
+              <CardLabel as="p">Grounded in research</CardLabel>
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
+                Built on what the research shows works
+              </h2>
+              <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-ink-secondary">
+                The loop Calra runs — make a call, see what happens, get a real score, adjust — is one
+                of the most studied ways to sharpen judgment. A few of the findings we built on:
+              </p>
+            </div>
+
+            <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-3">
+              {EVIDENCE.map((e) => (
+                <Card key={e.headline} as="div" className="flex flex-col">
+                  <h3 className="text-base font-semibold text-ink">{e.headline}</h3>
+                  <p className="mt-1.5 text-sm leading-relaxed text-ink-secondary">{e.body}</p>
+                  <p className="mt-auto pt-5">
+                    <a
+                      href={e.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-ink-tertiary underline decoration-border underline-offset-2 transition-colors hover:text-ink"
+                    >
+                      {e.cite} ↗
+                    </a>
+                  </p>
+                </Card>
+              ))}
+            </div>
+
+            <p className="mx-auto mt-8 max-w-2xl text-center text-sm text-ink-tertiary">
+              These are findings about calibration in general, not a promise about your results. We
+              lean on the mechanism the evidence supports — and because a bare score doesn&apos;t
+              teach on its own, Calra pairs every number with plain-language interpretation and a
+              concrete technique to try next.
+            </p>
           </div>
         </section>
 

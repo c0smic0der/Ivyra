@@ -83,10 +83,43 @@ body {
   animation: calra-grow-x 1s ease-out 0.2s both;
 }
 
+/* Quick, quiet fade for swapping the focused chart on /insights. */
+@keyframes calra-tab-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-tab-in {
+  animation: calra-tab-in 0.22s ease-out both;
+}
+
+/* Brief landing highlight when a resolution card is deep-linked/focused. The
+   accent border (applied alongside) carries the cue for reduced-motion users. */
+@keyframes calra-card-highlight {
+  from {
+    background-color: var(--color-accent-tint);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
+.animate-card-highlight {
+  animation: calra-card-highlight 1.8s ease-out both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-up,
   .animate-draw,
-  .animate-grow-x {
+  .animate-grow-x,
+  .animate-tab-in,
+  .animate-card-highlight {
     animation: none;
   }
   .animate-draw {

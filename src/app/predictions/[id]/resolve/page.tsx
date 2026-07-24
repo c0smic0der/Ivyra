@@ -1,9 +1,8 @@
 import { and, eq } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
 import { db, schema } from "@/db";
-import { brierSentence } from "@/lib/scoring";
 import { createClient } from "@/lib/supabase/server";
-import { Card, CardLabel } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
 import { Header } from "@/components/Header";
 import { ResolveClient } from "./ResolveClient";
 
@@ -23,10 +22,14 @@ export default async function ResolvePage({ params }: { params: Promise<{ id: st
 
   if (!row) notFound();
 
-  const isOpen = row.status === "open";
-  const isVoid = row.status === "void";
+  // This route is the resolve flow for OPEN predictions only — including early
+  // resolution (there's no due-date gate) and the target of the reminder emails.
+  // The read-only detail view of an already-resolved prediction has moved: the
+  // complete record now lives as a self-contained, expandable card in the
+  // /insights history, so a resolved/void prediction deep-links straight to it.
+  if (row.status !== "open") redirect(`/insights?resolution=${row.id}#history`);
+
   const confidencePercent = Math.round(Number(row.confidence) * 100);
-  const brier = row.brierScore === null ? null : Number(row.brierScore);
   const secondFieldLabel = row.predictionKind === "self" ? "Your plan" : "What would change your mind";
 
   return (
@@ -52,8 +55,7 @@ export default async function ResolvePage({ params }: { params: Promise<{ id: st
                   )}
                   {row.planOrDisconfirm && (
                     <p>
-                      <span className="text-ink-tertiary">{secondFieldLabel}:</span>{" "}
-                      {row.planOrDisconfirm}
+                      <span className="text-ink-tertiary">{secondFieldLabel}:</span> {row.planOrDisconfirm}
                     </p>
                   )}
                 </div>
@@ -61,47 +63,7 @@ export default async function ResolvePage({ params }: { params: Promise<{ id: st
             )}
           </Card>
 
-          {isOpen ? (
-            <ResolveClient id={row.id} />
-          ) : (
-            // Read-only revisit — stored score + directional sentence + the saved
-            // post-mortem. No regeneration, no AI call, no stats recompute.
-            <section className="mt-8">
-              {isVoid ? (
-                <p className="rounded-xl border border-border p-4 text-sm text-ink-secondary">
-                  Voided — excluded from your score.
-                  {row.outcomeNote ? ` "${row.outcomeNote}"` : ""}
-                </p>
-              ) : (
-                <Card>
-                  <p className="text-sm text-ink-secondary">
-                    Resolved{" "}
-                    <strong className={row.outcome ? "text-success" : "text-danger"}>
-                      {row.outcome ? "YES" : "NO"}
-                    </strong>
-                    {row.outcomeNote ? ` — "${row.outcomeNote}"` : ""}
-                  </p>
-                  {brier !== null && (
-                    <>
-                      <p className="mt-2 text-4xl font-semibold tabular-nums text-ink">
-                        {brier.toFixed(2)}
-                      </p>
-                      <p className="mt-1 text-sm text-ink-secondary">{brierSentence(brier)}</p>
-                    </>
-                  )}
-                </Card>
-              )}
-
-              {row.postmortem && (
-                <Card className="mt-4">
-                  <CardLabel>Looking back</CardLabel>
-                  <p className="mt-2 whitespace-pre-wrap text-sm text-ink-secondary">
-                    {row.postmortem}
-                  </p>
-                </Card>
-              )}
-            </section>
-          )}
+          <ResolveClient id={row.id} />
         </div>
       </main>
     </>

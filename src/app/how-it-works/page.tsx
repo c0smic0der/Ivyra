@@ -1,31 +1,38 @@
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { HOW_IT_WORKS, type Section as SectionCopy, type Why as WhyCopy } from "@/lib/content/howItWorks";
 import { Card, CardLabel } from "@/components/ui/Card";
 import { buttonVariants } from "@/components/ui/button";
 import { Header } from "@/components/Header";
 import { ONBOARDING_TEMPLATES } from "@/lib/onboarding/templates";
 import { ScoreDemo } from "./ScoreDemo";
 import { CurveDemo } from "./CurveDemo";
+import { BoldnessDemo } from "./BoldnessDemo";
 import { MarkSeen } from "./MarkSeen";
 
 export const metadata = {
   title: "How it works · Calra",
-  description:
-    "What calibration is, why your gut is probably overconfident, and how Calra measures it — in plain language.",
+  description: HOW_IT_WORKS.metaDescription,
 };
 
-// A section wrapper: an eyebrow label, a heading, and the body. Keeps the
-// vertical rhythm identical down the whole page.
-function Section({
-  eyebrow,
-  title,
-  children,
-}: {
-  eyebrow: string;
-  title: string;
-  children: ReactNode;
-}) {
+// Render **double-asterisk** spans as bold; everything else stays plain. Lets the
+// copy live as testable strings in the content module while keeping emphasis.
+function emphasize(text: string): ReactNode[] {
+  return text.split(/\*\*(.+?)\*\*/g).map((part, i) =>
+    i % 2 === 1 ? (
+      <span key={i} className="font-medium text-ink">
+        {part}
+      </span>
+    ) : (
+      <Fragment key={i}>{part}</Fragment>
+    ),
+  );
+}
+
+// A section wrapper: an eyebrow label, a heading, and the body — one consistent
+// vertical rhythm down the whole page.
+function Section({ eyebrow, title, children }: { eyebrow: string; title: string; children: ReactNode }) {
   return (
     <section className="border-t border-border-subtle pt-14">
       <CardLabel as="p" className="text-accent">
@@ -37,68 +44,50 @@ function Section({
   );
 }
 
-// Progressive disclosure — native <details>, so it needs no client JS and stays
-// skimmable for the impatient, deep for the curious.
-function Why({ question, children }: { question: string; children: ReactNode }) {
+function Paragraphs({ items }: { items: string[] }) {
+  return (
+    <div className="flex flex-col gap-4">
+      {items.map((p, i) => (
+        <p key={i} className="text-base leading-relaxed text-ink-secondary">
+          {emphasize(p)}
+        </p>
+      ))}
+    </div>
+  );
+}
+
+// Progressive disclosure — native <details>, no client JS. Skimmable for the
+// impatient, deep for the curious.
+function Why({ why }: { why: WhyCopy }) {
   return (
     <details className="group mt-6 rounded-xl border border-border bg-surface p-5 [&_summary::-webkit-details-marker]:hidden">
       <summary className="flex cursor-pointer items-center justify-between gap-4 text-sm font-medium text-ink">
-        {question}
-        <span className="shrink-0 text-ink-tertiary transition-transform group-open:rotate-90">
-          →
-        </span>
+        {why.question}
+        <span className="shrink-0 text-ink-tertiary transition-transform group-open:rotate-90">→</span>
       </summary>
-      <div className="mt-3 text-sm leading-relaxed text-ink-secondary">{children}</div>
+      <div className="mt-3 text-sm leading-relaxed text-ink-secondary">{emphasize(why.answer)}</div>
     </details>
   );
 }
 
-const LOOP_STEPS = [
-  {
-    step: "1",
-    title: "Predict",
-    body: "Write what you think will happen, in your own words. Attach a confidence — say, 75% — and the date you'll know the answer.",
-  },
-  {
-    step: "2",
-    title: "Resolve",
-    body: "When that date arrives, we nudge you. You mark what actually happened: yes or no. Your original reasoning stays frozen — no rewriting history.",
-  },
-  {
-    step: "3",
-    title: "Score",
-    body: "Plain math — never a guess, never AI — turns that prediction and outcome into an exact number for how good the call was.",
-  },
-  {
-    step: "4",
-    title: "Adjust",
-    body: "Do it enough times and the pattern surfaces: where your gut is sharp, and where your confidence runs ahead of reality. Then you recalibrate.",
-  },
-];
-
-const UNLOCKS = [
-  {
-    n: "~10",
-    title: "Your bias score",
-    body: "The first real read: a single number like “you run 12 points overconfident,” telling you which direction your gut leans and by how much.",
-  },
-  {
-    n: "~25",
-    title: "Your progress chart",
-    body: "Your score over time, so you can watch whether the training is actually working — your recent calls compared against your lifetime average.",
-  },
-  {
-    n: "~30",
-    title: "Your calibration curve",
-    body: "The full picture: your confidence plotted against reality across every level. It needs the most data because a curve from a handful of predictions is just noise.",
-  },
-];
+// A plain prose section straight from the content module.
+function ProseSection({ copy, children }: { copy: SectionCopy; children?: ReactNode }) {
+  return (
+    <Section eyebrow={copy.eyebrow} title={copy.title}>
+      <Paragraphs items={copy.paragraphs} />
+      {children}
+      {copy.why && <Why why={copy.why} />}
+    </Section>
+  );
+}
 
 export default async function HowItWorksPage() {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  const c = HOW_IT_WORKS;
 
   return (
     <>
@@ -108,152 +97,70 @@ export default async function HowItWorksPage() {
         <div className="w-full max-w-3xl">
           {/* Hero */}
           <p className="text-sm font-medium text-accent">How it works</p>
-          <h1 className="mt-3 text-4xl font-semibold tracking-tight text-ink">
-            Find out if your gut is actually right.
-          </h1>
-          <p className="mt-4 text-lg leading-relaxed text-ink-secondary">
-            You make judgment calls every day — this will ship on time, that hire will work out, I&apos;ll
-            stick with the gym this year. Calra is a simple loop for checking, over time, which of
-            those calls you can actually trust. No math required from you. Here&apos;s the whole idea.
-          </p>
+          <h1 className="mt-3 text-4xl font-semibold tracking-tight text-ink">{c.hero.headline}</h1>
+          <p className="mt-4 text-lg leading-relaxed text-ink-secondary">{c.hero.sub}</p>
 
           <div className="mt-16 flex flex-col gap-16">
-            {/* The problem */}
-            <Section eyebrow="The problem" title="We&apos;re bad at knowing how much we know">
-              <p className="text-base leading-relaxed text-ink-secondary">
-                Think of the last time you were <span className="font-medium text-ink">sure</span> —
-                &ldquo;I&apos;m 90% certain we&apos;ll close this by Friday.&rdquo; Now think about how
-                often that kind of &ldquo;90% certain&rdquo; actually pans out. For almost everyone,
-                the honest answer is: a lot less than 90% of the time.
-              </p>
-              <p className="mt-4 text-base leading-relaxed text-ink-secondary">
-                That gap is invisible, and it stays invisible, for one reason: we don&apos;t keep
-                track. After the fact, memory quietly rewrites itself — &ldquo;I always knew that was
-                a stretch&rdquo; — and the lesson evaporates. The only fix is almost embarrassingly
-                simple: <span className="font-medium text-ink">write the prediction down, with a
-                number, before you know the answer.</span> That&apos;s the entire mechanic here.
-              </p>
-              <Why question="Is this just me, or is everyone like this?">
-                It&apos;s remarkably universal — decades of research find that people are
-                systematically overconfident, and it barely correlates with intelligence or
-                expertise. The good news buried in that research: it&apos;s a{" "}
-                <span className="font-medium text-ink">trainable skill</span>, not a fixed trait.
-                Weather forecasters, who get scored feedback every single day, end up among the
-                best-calibrated people on earth. This app is a machine for giving you that same kind
-                of feedback.
-              </Why>
-            </Section>
+            <ProseSection copy={c.problem} />
+            <ProseSection copy={c.keyIdea} />
 
-            {/* The idea */}
-            <Section
-              eyebrow="The key idea"
-              title="A probability is a claim about many cases, not one event"
-            >
-              <p className="text-base leading-relaxed text-ink-secondary">
-                This is the one concept everything rests on, and most people have never had it spelled
-                out. Picture a weather forecaster who says{" "}
-                <span className="font-medium text-ink">&ldquo;70% chance of rain&rdquo;</span>. What
-                would make that a <em>good</em> forecast?
-              </p>
-              <p className="mt-4 text-base leading-relaxed text-ink-secondary">
-                Not whether it rains today. A &ldquo;70% chance&rdquo; isn&apos;t a promise that it
-                will rain — it&apos;s a claim that <span className="font-medium text-ink">on days
-                like this, it rains about 7 times out of 10</span>. So the forecaster is exactly right
-                if, across all the days she says &ldquo;70%,&rdquo; it rains on roughly 70% of them.
-                The 3-in-10 dry days aren&apos;t her being wrong — they&apos;re her forecast{" "}
-                <em>coming true</em>. Thirty percent of the time, it was supposed to stay dry.
-              </p>
-              <p className="mt-4 text-base leading-relaxed text-ink-secondary">
-                So no single prediction can be &ldquo;calibrated&rdquo; or not — only a whole track
-                record can. That&apos;s why Calra needs a bit of history before it can tell you
-                anything, and why it gets sharper the longer you use it.
-              </p>
-              <Why question="Then how can one prediction ever be scored?">
-                A single prediction still gets an exact score for how close it landed to reality (that&apos;s
-                the next section). What a single prediction <em>can&apos;t</em> tell you is whether
-                your <em>70%</em> really means 70% — that judgment only emerges once you&apos;ve made
-                many of them and we can check: of all your &ldquo;70%&rdquo; calls, how many came
-                true? Individual scores measure accuracy; the pattern across them measures
-                calibration.
-              </Why>
-            </Section>
-
-            {/* The loop */}
-            <Section eyebrow="The loop" title="Four steps, repeated">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                {LOOP_STEPS.map((s) => (
-                  <Card key={s.step} as="div">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent-tint font-mono text-sm font-semibold text-accent">
-                      {s.step}
-                    </div>
-                    <h3 className="mt-4 text-base font-semibold text-ink">{s.title}</h3>
-                    <p className="mt-1.5 text-sm leading-relaxed text-ink-secondary">{s.body}</p>
-                  </Card>
+            {/* The loop — a connected visual sequence (→ across, ↓ when stacked). */}
+            <Section eyebrow={c.loop.eyebrow} title={c.loop.title}>
+              <ol className="flex flex-col gap-3 sm:flex-row sm:items-stretch">
+                {c.loop.steps.map((s, i) => (
+                  <Fragment key={s.step}>
+                    <li className="flex-1">
+                      <Card as="div" className="h-full">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent-tint font-mono text-sm font-semibold text-accent">
+                          {s.step}
+                        </div>
+                        <h3 className="mt-4 text-base font-semibold text-ink">{s.title}</h3>
+                        <p className="mt-1.5 text-sm leading-relaxed text-ink-secondary">{s.body}</p>
+                      </Card>
+                    </li>
+                    {i < c.loop.steps.length - 1 && (
+                      <li aria-hidden className="flex items-center justify-center text-ink-tertiary">
+                        <span className="sm:hidden">↓</span>
+                        <span className="hidden sm:inline">→</span>
+                      </li>
+                    )}
+                  </Fragment>
                 ))}
-              </div>
+              </ol>
+              <p className="mt-4 text-sm text-ink-tertiary">…and then back to the top, for the next call.</p>
             </Section>
 
-            {/* Interactive: what a score is */}
-            <Section eyebrow="Try it" title="What a score actually looks like">
-              <p className="text-base leading-relaxed text-ink-secondary">
-                When a prediction resolves, we measure one thing:{" "}
-                <span className="font-medium text-ink">how far your confidence was from what
-                happened</span>. That&apos;s the score (its formal name is a <em>Brier score</em>, but
-                you never need the name). Drag the slider and watch it move.
-              </p>
+            {/* Your score + live Brier demo */}
+            <ProseSection copy={c.score}>
               <Card className="mt-6">
                 <ScoreDemo />
               </Card>
-            </Section>
+            </ProseSection>
 
-            {/* What the numbers mean */}
-            <Section eyebrow="What you&apos;ll see" title="The three numbers, in plain terms">
-              <div className="flex flex-col gap-4">
-                <Card as="div">
-                  <h3 className="text-base font-semibold text-ink">The score (Brier)</h3>
-                  <p className="mt-1.5 text-sm leading-relaxed text-ink-secondary">
-                    How close your predictions land to reality, on average.{" "}
-                    <span className="font-medium text-ink">Lower is better</span>, like golf. A score
-                    of <span className="font-mono text-ink">0.25</span> is the &ldquo;I&apos;m just
-                    guessing&rdquo; baseline — what you&apos;d get by shrugging &ldquo;50/50&rdquo; at
-                    everything. Beating it means your confidence carries real information.
-                  </p>
-                </Card>
-                <Card as="div">
-                  <h3 className="text-base font-semibold text-ink">The bias score</h3>
-                  <p className="mt-1.5 text-sm leading-relaxed text-ink-secondary">
-                    Which way you lean, and by how much. &ldquo;You run{" "}
-                    <span className="font-medium text-ink">12 points overconfident</span>&rdquo; means
-                    that, on average, reality came in 12 percentage points below your stated
-                    confidence. A negative version means you&apos;re too cautious.
-                  </p>
-                </Card>
-                <Card as="div">
-                  <h3 className="text-base font-semibold text-ink">The calibration curve</h3>
-                  <p className="mt-1.5 text-sm leading-relaxed text-ink-secondary">
-                    The whole picture in one chart: your confidence along the bottom, how often
-                    things actually happened up the side. Dots{" "}
-                    <span className="font-medium text-ink">below the diagonal line mean
-                    overconfident</span>; above it means underconfident; on it means spot-on. Flip
-                    between the three shapes below.
-                  </p>
-                </Card>
-              </div>
-              <Card className="mt-4">
+            <ProseSection copy={c.bias} />
+
+            {/* Your curve + shape demo */}
+            <ProseSection copy={c.curve}>
+              <Card className="mt-6">
                 <CurveDemo />
               </Card>
-            </Section>
+            </ProseSection>
 
-            {/* What unlocks when */}
-            <Section eyebrow="Honest expectations" title="What you&apos;ll see, and when">
-              <p className="text-base leading-relaxed text-ink-secondary">
-                Because calibration is about patterns, the richer read-outs need a bit of data before
-                they mean anything — we&apos;d rather show you nothing than show you noise. You&apos;ll
-                get an exact score on your very first resolution; the bigger pictures arrive as you
-                go:
-              </p>
+            {/* Boldness — the flagship new concept + separation demo */}
+            <ProseSection copy={c.boldness}>
+              <Card className="mt-6">
+                <BoldnessDemo />
+              </Card>
+            </ProseSection>
+
+            <ProseSection copy={c.verdictInsight} />
+            <ProseSection copy={c.scope} />
+
+            {/* Why some things unlock later */}
+            <Section eyebrow={c.unlocks.eyebrow} title={c.unlocks.title}>
+              <p className="text-base leading-relaxed text-ink-secondary">{emphasize(c.unlocks.intro)}</p>
               <ol className="mt-6 flex flex-col gap-4">
-                {UNLOCKS.map((u) => (
+                {c.unlocks.items.map((u) => (
                   <li key={u.title} className="flex gap-4">
                     <span className="mt-0.5 shrink-0 rounded-lg bg-surface px-3 py-1.5 font-mono text-sm font-semibold text-accent">
                       {u.n}
@@ -265,21 +172,21 @@ export default async function HowItWorksPage() {
                   </li>
                 ))}
               </ol>
-              <p className="mt-6 text-sm text-ink-tertiary">
-                Until each one unlocks, we show you exactly how many resolutions are left — never a
-                blank or a misleading half-picture.
-              </p>
+              <p className="mt-6 text-sm text-ink-tertiary">{c.unlocks.footnote}</p>
+            </Section>
+
+            {/* Trust — computed vs. written. Given a soft-accent callout so the
+                point lands. */}
+            <Section eyebrow={c.trust.eyebrow} title={c.trust.title}>
+              <Card as="div" className="border-accent/30 bg-accent-tint/40">
+                <Paragraphs items={c.trust.paragraphs} />
+              </Card>
             </Section>
 
             {/* CTA */}
             <section className="border-t border-border-subtle pt-14">
-              <h2 className="text-2xl font-semibold tracking-tight text-ink">
-                Make your first prediction
-              </h2>
-              <p className="mt-3 text-base leading-relaxed text-ink-secondary">
-                The whole loop starts with one call about something you actually care about. It takes
-                about thirty seconds.
-              </p>
+              <h2 className="text-2xl font-semibold tracking-tight text-ink">{c.cta.title}</h2>
+              <p className="mt-3 text-base leading-relaxed text-ink-secondary">{c.cta.body}</p>
               <div className="mt-6">
                 <Link
                   href={user ? "/predictions/new" : "/?signin=1"}
@@ -291,7 +198,7 @@ export default async function HowItWorksPage() {
 
               {user && (
                 <div className="mt-8">
-                  <CardLabel as="p">Or start from an example — you can edit it</CardLabel>
+                  <CardLabel as="p">{c.cta.templatesIntro}</CardLabel>
                   <div className="mt-3 flex flex-wrap gap-3">
                     {ONBOARDING_TEMPLATES.map((t) => (
                       <Link

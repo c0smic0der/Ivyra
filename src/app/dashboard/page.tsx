@@ -4,12 +4,14 @@ import { redirect } from "next/navigation";
 import { db, schema } from "@/db";
 import { createClient } from "@/lib/supabase/server";
 import { buildInsightsViewModel, type InsightsInput } from "@/lib/insights/insightsCore";
+import { queryCompactHistory } from "@/lib/insights/historyQuery";
 import { BIAS_UNLOCK_N } from "@/lib/scoring";
 import { Card } from "@/components/ui/Card";
 import { buttonVariants } from "@/components/ui/button";
 import { inputClasses } from "@/components/ui/input";
 import { Header } from "@/components/Header";
 import { HowItWorksGate } from "@/components/HowItWorksGate";
+import { ResolutionHistory } from "@/components/ResolutionHistory";
 import { InstallPrompt } from "./InstallPrompt";
 import { OnboardingBanner } from "./OnboardingBanner";
 
@@ -68,6 +70,10 @@ export default async function DashboardPage() {
   }));
 
   const vm = buildInsightsViewModel(insightsInputs);
+
+  // The last few resolutions as a plain glance — same shared component and same
+  // server-side, user-scoped query the insights history uses, in compact mode.
+  const recentResolutions = (await queryCompactHistory(user.id)).items;
 
   return (
     <>
@@ -210,6 +216,12 @@ export default async function DashboardPage() {
               </ul>
             )}
           </section>
+
+          {/* A glance at what happened — the plain record only. Scoring and
+              interpretation live on /insights ("View all →"). */}
+          <div className="mt-12">
+            <ResolutionHistory mode="compact" items={recentResolutions} />
+          </div>
         </div>
       </main>
     </>

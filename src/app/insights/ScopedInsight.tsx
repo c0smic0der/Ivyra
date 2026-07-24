@@ -83,7 +83,7 @@ export function ScopedInsight({
   return (
     <section aria-label="AI insight">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-xs font-medium uppercase tracking-wide text-ink-tertiary">AI insight</h2>
+        <h2 className="text-sm font-semibold text-ink-secondary">AI Insight</h2>
         <div className="flex flex-wrap items-center gap-2">
           <div className="inline-flex rounded-lg border border-border p-0.5" role="tablist" aria-label="Insight scope">
             {primary.map((c) => (
@@ -133,13 +133,11 @@ export function ScopedInsight({
         </div>
       </div>
 
-      {/* The scope label, made prominent — the two scopes can legitimately
-          disagree, so which slice this is must be unmistakable. */}
-      <div className="mt-3">
-        <span className="inline-flex items-center rounded-full bg-surface px-3 py-1 text-sm font-semibold text-ink ring-1 ring-inset ring-border">
-          {card.label}
-        </span>
-      </div>
+      {/* The scope label — supporting context, not a caution. Kept subtle
+          (small, muted, no border or fill) so it reads as "which slice is this"
+          rather than a warning banner. The scope tabs above already carry the
+          visual weight of the selection. */}
+      <p className="mt-3 text-xs text-ink-tertiary">{card.label}</p>
 
       {/* Stale: an out-of-date badge naming WHY (new data, or an improved prompt). */}
       {card.freshness === "stale" && card.staleMessage && (

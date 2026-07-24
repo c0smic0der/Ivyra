@@ -13,6 +13,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { progressRangeFilter } from "@/lib/insights/historyView";
 import type { ProgressPoint } from "@/lib/insights/insightsCore";
 import { cx } from "@/components/ui/cx";
 import { useInsightsSelection } from "./InsightsSelection";
@@ -48,7 +49,7 @@ function ProgressTooltip({
 }
 
 export function ProgressChart({ trend, baseline }: { trend: ProgressPoint[]; baseline: number }) {
-  const { selection, setSelection } = useInsightsSelection();
+  const { selection, setSelection, selectAndScroll } = useInsightsSelection();
   const [mode, setMode] = useState<Mode>("recent");
   const isRecent = mode === "recent";
 
@@ -87,13 +88,12 @@ export function ProgressChart({ trend, baseline }: { trend: ProgressPoint[]; bas
     if (dragStart === null) return;
     const lo = Math.min(dragStart, dragCurrent ?? dragStart);
     const hi = Math.max(dragStart, dragCurrent ?? dragStart);
-    const chosen = trend.filter((p) => p.n >= lo && p.n <= hi);
     setDragStart(null);
     setDragCurrent(null);
-    if (chosen.length === 0) return;
-    const label =
-      chosen.length === 1 ? `Resolution #${lo}` : `Resolutions #${lo}–#${hi} (${chosen.length})`;
-    setSelection({ ids: chosen.map((p) => p.predictionId), label, nRange: [lo, hi] });
+    // A single point maps to that one resolution; a drag maps to the range. Both
+    // filter the history in place (and scroll to it) — no navigation.
+    const filter = progressRangeFilter(trend, lo, hi);
+    if (filter) selectAndScroll(filter);
   }
 
   const dragging = dragStart !== null && dragCurrent !== null;
@@ -117,7 +117,7 @@ export function ProgressChart({ trend, baseline }: { trend: ProgressPoint[]; bas
             </button>
           ))}
         </div>
-        {selection && (
+        {selection?.nRange && (
           <button
             type="button"
             onClick={() => setSelection(null)}
@@ -186,8 +186,10 @@ export function ProgressChart({ trend, baseline }: { trend: ProgressPoint[]; bas
               strokeWidth={1.5}
               label={{ value: `${baseline.toFixed(2)} baseline`, position: "insideTopRight", fontSize: 11, fill: "var(--color-ink-tertiary)" }}
             />
-            {/* Committed selection (persisted between drags), padded so a single point still shows. */}
-            {selection && !dragging && (
+            {/* Committed selection (persisted between drags), padded so a single
+                point still shows. Only progress-chart selections carry an
+                nRange; a calibration-band selection doesn't draw a box here. */}
+            {selection?.nRange && !dragging && (
               <ReferenceArea
                 x1={selection.nRange[0] - 0.4}
                 x2={selection.nRange[1] + 0.4}

@@ -8,32 +8,40 @@ import { cx } from "@/components/ui/cx";
 // sentence they have to trust. Illustrative data, not the user's — the real
 // curve is earned with ~30 resolutions (see the page copy).
 
-type Shape = "overconfident" | "calibrated" | "underconfident";
+type Shape = "overconfident" | "calibrated" | "underconfident" | "hedging";
 
 // Bucket centers along the confidence axis, and the hit rate each shape produces.
 const CONFIDENCE = [0.1, 0.3, 0.5, 0.7, 0.9];
 
-const SHAPES: Record<
-  Shape,
-  { label: string; blurb: string; hitRate: (c: number) => number }
-> = {
+interface Point {
+  c: number;
+  hit: number;
+}
+
+const SHAPES: Record<Shape, { label: string; blurb: string; points: Point[] }> = {
   overconfident: {
     label: "Overconfident",
     blurb:
       "Every dot sits below the line: things happen less often than you claimed. When you say 90%, it comes true far less than 90% of the time. This is the common human pattern.",
-    hitRate: (c) => Math.max(0.04, c - 0.18),
+    points: CONFIDENCE.map((c) => ({ c, hit: Math.max(0.04, c - 0.18) })),
   },
   calibrated: {
     label: "Well-calibrated",
     blurb:
       "The dots land on the line: your 70%s happen about 70% of the time, your 90%s about 90%. Your stated confidence can be taken at face value.",
-    hitRate: (c) => c,
+    points: CONFIDENCE.map((c) => ({ c, hit: c })),
   },
   underconfident: {
     label: "Underconfident",
     blurb:
       "Every dot sits above the line: things happen more often than you admitted. Your cautious 60%s were really closer to 80%. You knew more than you let on.",
-    hitRate: (c) => Math.min(0.97, c + 0.18),
+    points: CONFIDENCE.map((c) => ({ c, hit: Math.min(0.97, c + 0.18) })),
+  },
+  hedging: {
+    label: "Hedging",
+    blurb:
+      "Answer “50%” to everything and there's only ever one dot, sitting right on the line. Technically calibrated — and completely uninformative. A good score alone can't catch this, which is exactly what boldness (below) is for.",
+    points: [{ c: 0.5, hit: 0.5 }],
   },
 };
 
@@ -51,7 +59,7 @@ const TICKS = [0, 0.25, 0.5, 0.75, 1];
 export function CurveDemo() {
   const [shape, setShape] = useState<Shape>("overconfident");
   const active = SHAPES[shape];
-  const points = CONFIDENCE.map((c) => ({ c, hit: active.hitRate(c) }));
+  const points = active.points;
 
   return (
     <div>
@@ -138,13 +146,15 @@ export function CurveDemo() {
             strokeDasharray="4 4"
           />
 
-          {/* The user's line + dots */}
-          <polyline
-            points={points.map((p) => `${x(p.c)},${y(p.hit)}`).join(" ")}
-            fill="none"
-            className="stroke-accent"
-            strokeWidth={2}
-          />
+          {/* The user's line + dots. A single-dot shape (hedging) draws no line. */}
+          {points.length > 1 && (
+            <polyline
+              points={points.map((p) => `${x(p.c)},${y(p.hit)}`).join(" ")}
+              fill="none"
+              className="stroke-accent"
+              strokeWidth={2}
+            />
+          )}
           {points.map((p) => (
             <circle
               key={p.c}
