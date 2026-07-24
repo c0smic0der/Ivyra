@@ -8,7 +8,7 @@
 // The cardinal rule here is DEFAULT TO SKIPPING, NEVER LOOPING. Every path where
 // storage is missing or throws (SSR, private mode, disabled storage) resolves to
 // "seen", so the gate can never trap a user in a redirect loop it can't clear.
-export const HOW_IT_WORKS_SEEN_KEY = "calra_how_it_works_seen";
+export const HOW_IT_WORKS_SEEN_KEY = "aftercast_how_it_works_seen";
 
 // Pure core — takes a Storage-like object (or null when unavailable) so it can be
 // unit-tested in the node environment without a DOM.

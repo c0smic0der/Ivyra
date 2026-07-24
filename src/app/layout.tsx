@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Space_Grotesk } from "next/font/google";
 import "./globals.css";
+import { Footer } from "@/components/Footer";
 import { ServiceWorkerRegister } from "./service-worker-register";
 
 const geistSans = Geist({
@@ -14,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 // Wordmark-only face — distinct from the Geist body copy, used solely for
-// the "Calra" logotype in Header.
+// the "Aftercast" logotype in Header.
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
   subsets: ["latin"],
@@ -22,7 +23,7 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Calra",
+  title: "Aftercast",
   description:
     "Log real-life predictions, resolve them, and score your calibration over time.",
 };
@@ -39,6 +40,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         {children}
+        <Footer />
         <ServiceWorkerRegister />
       </body>
     </html>

@@ -83,7 +83,7 @@ body {
 }
 
 /* --- Landing-page motion (subtle; disabled for reduced-motion users) --- */
-@keyframes calra-fade-up {
+@keyframes aftercast-fade-up {
   from {
     opacity: 0;
     transform: translateY(14px);
@@ -94,13 +94,13 @@ body {
   }
 }
 
-@keyframes calra-draw {
+@keyframes aftercast-draw {
   to {
     stroke-dashoffset: 0;
   }
 }
 
-@keyframes calra-grow-x {
+@keyframes aftercast-grow-x {
   from {
     transform: scaleX(0);
   }
@@ -110,22 +110,22 @@ body {
 }
 
 .animate-fade-up {
-  animation: calra-fade-up 0.6s ease-out both;
+  animation: aftercast-fade-up 0.6s ease-out both;
 }
 
 .animate-draw {
   stroke-dasharray: var(--draw-len, 300);
   stroke-dashoffset: var(--draw-len, 300);
-  animation: calra-draw 1.6s ease-out 0.3s forwards;
+  animation: aftercast-draw 1.6s ease-out 0.3s forwards;
 }
 
 .animate-grow-x {
   transform-origin: left;
-  animation: calra-grow-x 1s ease-out 0.2s both;
+  animation: aftercast-grow-x 1s ease-out 0.2s both;
 }
 
 /* Quick, quiet fade for swapping the focused chart on /insights. */
-@keyframes calra-tab-in {
+@keyframes aftercast-tab-in {
   from {
     opacity: 0;
     transform: translateY(6px);
@@ -137,12 +137,12 @@ body {
 }
 
 .animate-tab-in {
-  animation: calra-tab-in 0.22s ease-out both;
+  animation: aftercast-tab-in 0.22s ease-out both;
 }
 
 /* Brief landing highlight when a resolution card is deep-linked/focused. The
    accent border (applied alongside) carries the cue for reduced-motion users. */
-@keyframes calra-card-highlight {
+@keyframes aftercast-card-highlight {
   from {
     background-color: var(--color-accent-tint);
   }
@@ -152,7 +152,7 @@ body {
 }
 
 .animate-card-highlight {
-  animation: calra-card-highlight 1.8s ease-out both;
+  animation: aftercast-card-highlight 1.8s ease-out both;
 }
 
 @media (prefers-reduced-motion: reduce) {

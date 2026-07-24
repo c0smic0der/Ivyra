@@ -3,7 +3,7 @@
 // prediction data or auth state would risk staleness and privacy leaks.
 // It only satisfies the PWA installability requirement and cleans up old caches.
 
-const CACHE = "calra-v1";
+const CACHE = "aftercast-v1";
 
 self.addEventListener("install", () => {
   self.skipWaiting();

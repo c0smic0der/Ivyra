@@ -1,4 +1,4 @@
-# Building Caliber with Claude — Understanding & Setup Guide
+# Building Aftercast with Claude — Understanding & Setup Guide
 
 *Two sections. Section 1 explains what Claude tooling you'll use and how it actually works — simple but detailed. Section 2 is the complete, ground-zero setup: every step, every command, every prompt, in order, explained as if you've never touched any of it.*
 
@@ -124,8 +124,8 @@ claude --version
 
 ### Step A5 — Collect your secrets into a scratch note
 **What you're doing:** gathering the five secret values Part B will paste into the environment file — collecting them now prevents mid-flow scavenger hunts across five dashboards. A **secret** is any value that grants access: an API key is a password-for-programs, and anyone holding it can act (and spend) as you. Hence the rules: keep them in a local note for the next hour, then only in `.env.local`; **never in git, never in chat, never in a screenshot.**
-1. **Supabase:** dashboard → **New project** → name it `caliber`, pick the region nearest you (physical distance = latency), click **Generate a password** for the database and *save it in your note* → wait ~2 min while it provisions. Then **Settings → API**: copy the **Project URL** (your database's public address) and the **anon public key** (the low-privilege key browsers are allowed to hold — "anon" = anonymous-visitor permissions; it's safe-ish in public *because* Row-Level Security constrains it, which is why RLS is a hard rule in CLAUDE.md). Then **Settings → Database → Connection string**, pick **URI**: copy it — this is `DATABASE_URL`, the full-privilege address+credentials your *server* uses; note it embeds that DB password you generated (replace the `[YOUR-PASSWORD]` placeholder if shown).
-2. **Anthropic Console:** **API Keys → Create key** → name it `caliber` → copy the `sk-ant-...` value immediately — **it's shown exactly once**; lose it and you just create a new one (keys are cheap; leaked keys are not).
+1. **Supabase:** dashboard → **New project** → name it `aftercast`, pick the region nearest you (physical distance = latency), click **Generate a password** for the database and *save it in your note* → wait ~2 min while it provisions. Then **Settings → API**: copy the **Project URL** (your database's public address) and the **anon public key** (the low-privilege key browsers are allowed to hold — "anon" = anonymous-visitor permissions; it's safe-ish in public *because* Row-Level Security constrains it, which is why RLS is a hard rule in CLAUDE.md). Then **Settings → Database → Connection string**, pick **URI**: copy it — this is `DATABASE_URL`, the full-privilege address+credentials your *server* uses; note it embeds that DB password you generated (replace the `[YOUR-PASSWORD]` placeholder if shown).
+2. **Anthropic Console:** **API Keys → Create key** → name it `aftercast` → copy the `sk-ant-...` value immediately — **it's shown exactly once**; lose it and you just create a new one (keys are cheap; leaked keys are not).
 3. **Resend:** **API Keys → Create** → copy the `re_...` value (same shown-once rule).
 
 ---
@@ -144,7 +144,7 @@ npm run dev
 - `cd /Users/Shiv/Desktop/projects/decision_calibrator` — move into your project folder. **Every command in Part B and every future `claude` launch assumes you're inside this folder** — it's also your Claude Code permission boundary, per D2.
 - `npx` — npm's cousin: **run a package once without installing it**. Perfect for generators you'll use a single time. (`npm install` = buy the appliance; `npx` = rent it for an afternoon.)
 - `create-next-app@latest` — the official Next.js project generator; `@latest` pins it to the newest release so you don't scaffold with a stale cached copy.
-- `.` — "scaffold into the **current folder**" rather than creating a new subfolder. This is the one deviation from the generator's default flow, and it's what keeps everything directly inside `decision_calibrator` instead of nesting a second folder within it. The folder must be empty (or near-empty) for this to work — if the generator complains about conflicting files, list what's there (`ls -a`) and clear it out first. The generated app's internal name will be `decision_calibrator` (the folder name); the *product* is still called Caliber — an npm package name and a product name are separate things, and only the latter appears in the UI.
+- `.` — "scaffold into the **current folder**" rather than creating a new subfolder. This is the one deviation from the generator's default flow, and it's what keeps everything directly inside `decision_calibrator` instead of nesting a second folder within it. The folder must be empty (or near-empty) for this to work — if the generator complains about conflicting files, list what's there (`ls -a`) and clear it out first. The generated app's internal name will be `decision_calibrator` (the folder name); the *product* is still called Aftercast — an npm package name and a product name are separate things, and only the latter appears in the UI.
 - The flags are answers to questions the generator would otherwise ask interactively: `--typescript` (typed JavaScript — the compiler catches type errors before they run; the 2026 hiring baseline), `--tailwind` (the styling system: utility classes in your markup instead of separate CSS files), `--eslint` (the standard code-quality linter), `--app` (**the App Router** — modern Next.js architecture with Server Components; this is the hiring-signal idiom, versus the legacy "Pages Router"), `--src-dir` (application code lives under `src/`, cleanly separated from root-level config clutter), `--import-alias "@/*"` (lets code write `import x from "@/lib/scoring"` instead of fragile `../../../lib/scoring` relative paths — `@/` just means "from src/").
 - `npm run dev` — `npm run <name>` executes a *script* defined in `package.json` (the project's manifest file — its name, dependency list, and named commands). The `dev` script starts the **development server**: a local-only web server that compiles your app on the fly and hot-reloads the browser when files change. It runs until you stop it.
 **Expect:** the generator takes a minute (it's downloading dependencies into `node_modules` — a famously enormous folder; that's normal). `npm run dev` prints `Local: http://localhost:3000` — open that in a browser (`localhost` = "this machine"; `:3000` = the port, one of thousands of numbered doors a computer can serve on) and you'll see the Next.js starter page. **Ctrl+C** in the terminal stops the server (the universal "stop the running program" keystroke).
@@ -202,7 +202,7 @@ node_modules/
 
 Now the `CLAUDE.md` content:
 ```markdown
-# Caliber
+# Aftercast
 A web app (installable PWA) to log real-life predictions with a probability +
 resolution date, resolve them when the date arrives, and score calibration over
 time. Core principle: **the LLM narrates, deterministic code grades.** AI works
@@ -390,7 +390,7 @@ Same rhythm, new features: Murphy `decompose()` + identity test + Boldness gauge
 
 ## Part D — Critical general knowledge for building with Claude Code
 
-*Everything here applies to any project, not just Caliber. These are the fundamentals that separate people who fight the tool from people it multiplies. Explained from zero.*
+*Everything here applies to any project, not just Aftercast. These are the fundamentals that separate people who fight the tool from people it multiplies. Explained from zero.*
 
 ### D1 — The context window: the one resource that governs everything
 

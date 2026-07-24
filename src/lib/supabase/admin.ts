@@ -28,3 +28,19 @@ export async function getUserEmail(userId: string): Promise<string | null> {
   if (error || !data.user) return null;
   return data.user.email ?? null;
 }
+
+/**
+ * Permanently deletes a user from Supabase Auth (removes their `auth.users` row
+ * and revokes their sessions). Used only by the account-deletion flow, AFTER the
+ * user's application rows have been removed. Throws on failure so the caller can
+ * surface an error and the user can retry — a failed auth-delete leaves the login
+ * intact (recoverable) rather than orphaning inaccessible data.
+ */
+export async function deleteAuthUser(userId: string): Promise<void> {
+  const { error } = await getSupabaseAdmin().auth.admin.deleteUser(userId);
+  if (error) {
+    // Re-throw as a plain Error; callers log the class name only, never this
+    // message (it can echo provider-side detail).
+    throw new Error(`auth admin deleteUser failed: ${error.message}`);
+  }
+}

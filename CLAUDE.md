@@ -1,5 +1,5 @@
 @AGENTS.md
-# Caliber
+# Aftercast
 A web app (installable PWA) to log real-life predictions with a probability +
 resolution date, resolve them when the date arrives, and score calibration over
 time. Core principle: **the LLM narrates, deterministic code grades.** AI works

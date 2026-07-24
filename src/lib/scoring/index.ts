@@ -1,4 +1,4 @@
-// Calra scoring engine — v1 (Brier layer).
+// Aftercast scoring engine — v1 (Brier layer).
 //
 // The whole product rests on one split: *the LLM narrates, deterministic code
 // grades*. Every number in here is exact, tested math — the AI never touches it.

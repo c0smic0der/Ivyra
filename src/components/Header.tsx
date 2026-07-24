@@ -5,7 +5,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { HeaderNav } from "./HeaderNav";
 
 // `showWordmark` is false only on the landing page, where a large centered
-// "Calra." hero wordmark already carries the brand — so it isn't shown twice.
+// "Aftercast." hero wordmark already carries the brand — so it isn't shown twice.
 export async function Header({ showWordmark = true }: { showWordmark?: boolean } = {}) {
   const supabase = await createClient();
   const {
@@ -20,11 +20,11 @@ export async function Header({ showWordmark = true }: { showWordmark?: boolean }
             href="/dashboard"
             className="shrink-0 font-wordmark text-lg font-semibold tracking-tight text-ink"
           >
-            Calra<span className="text-accent">.</span>
+            Aftercast<span className="text-accent">.</span>
           </Link>
         )}
 
-        <HeaderNav />
+        <HeaderNav authed={Boolean(user)} />
 
         {user && (
           <div className="ml-auto flex shrink-0 items-center gap-3">

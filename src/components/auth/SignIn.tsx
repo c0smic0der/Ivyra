@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { buttonVariants } from "@/components/ui/button";
 import { inputClasses } from "@/components/ui/input";
@@ -76,12 +77,12 @@ function SignInModal({
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
-        aria-label="Sign in to Calra"
+        aria-label="Sign in to Aftercast"
       >
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 className="font-wordmark text-xl font-semibold tracking-tight text-ink">
-              Sign in to Calra<span className="text-accent">.</span>
+              Sign in to Aftercast<span className="text-accent">.</span>
             </h2>
             <p className="mt-1 text-sm text-ink-secondary">
               We&apos;ll email you a magic link — no password to remember.
@@ -123,6 +124,18 @@ function SignInModal({
             {error && <p className="text-sm text-danger">{error}</p>}
           </form>
         )}
+
+        <p className="mt-5 text-center text-xs text-ink-tertiary">
+          By continuing you agree to our{" "}
+          <Link href="/terms" className="underline hover:text-ink">
+            Terms
+          </Link>{" "}
+          and{" "}
+          <Link href="/privacy" className="underline hover:text-ink">
+            Privacy Policy
+          </Link>
+          .
+        </p>
       </div>
     </div>
   );

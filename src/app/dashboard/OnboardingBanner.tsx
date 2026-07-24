@@ -19,7 +19,7 @@ export function OnboardingBanner({ hasAnyPrediction }: { hasAnyPrediction: boole
         <p className="text-ink">
           New here?{" "}
           <Link href="/how-it-works" className="font-medium text-accent hover:underline">
-            See how Calra measures your judgment →
+            See how Aftercast measures your judgment →
           </Link>
         </p>
         <Link

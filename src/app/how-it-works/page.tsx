@@ -12,7 +12,7 @@ import { BoldnessDemo } from "./BoldnessDemo";
 import { MarkSeen } from "./MarkSeen";
 
 export const metadata = {
-  title: "How it works · Calra",
+  title: "How it works · Aftercast",
   description: HOW_IT_WORKS.metaDescription,
 };
 
@@ -46,9 +46,10 @@ function Section({ eyebrow, title, children }: { eyebrow: string; title: string;
 
 function Paragraphs({ items }: { items: string[] }) {
   return (
-    // Prose stays in a readable measure even though the page container is wider —
-    // long lines hurt readability. Cards, demos, and grids use the full width.
-    <div className="flex max-w-2xl flex-col gap-4">
+    // Prose fills the same content width as the section headings, callout boxes,
+    // and cards it sits among, so text lines don't end short of the boxes beside
+    // them (the page container's max-w-5xl is the shared measure).
+    <div className="flex flex-col gap-4">
       {items.map((p, i) => (
         <p key={i} className="text-base leading-relaxed text-ink-secondary">
           {emphasize(p)}
@@ -160,7 +161,7 @@ export default async function HowItWorksPage() {
 
             {/* Why some things unlock later */}
             <Section eyebrow={c.unlocks.eyebrow} title={c.unlocks.title}>
-              <p className="max-w-2xl text-base leading-relaxed text-ink-secondary">{emphasize(c.unlocks.intro)}</p>
+              <p className="text-base leading-relaxed text-ink-secondary">{emphasize(c.unlocks.intro)}</p>
               <ol className="mt-6 flex flex-col gap-4">
                 {c.unlocks.items.map((u) => (
                   <li key={u.title} className="flex gap-4">
@@ -188,7 +189,7 @@ export default async function HowItWorksPage() {
             {/* CTA */}
             <section className="border-t border-border-subtle pt-14">
               <h2 className="text-xl font-semibold tracking-tight text-ink">{c.cta.title}</h2>
-              <p className="mt-3 max-w-2xl text-base leading-relaxed text-ink-secondary">{c.cta.body}</p>
+              <p className="mt-3 text-base leading-relaxed text-ink-secondary">{c.cta.body}</p>
               <div className="mt-6">
                 <Link
                   href={user ? "/predictions/new" : "/?signin=1"}
