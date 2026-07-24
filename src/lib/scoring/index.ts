@@ -271,6 +271,80 @@ export function ece(preds: Scorable[]): number | null {
   return weighted / total;
 }
 
+// --- v2: Murphy decomposition ----------------------------------------------
+
+/**
+ * Murphy's three-way decomposition of the Brier score over the calibration
+ * deciles. The identity `brier = uncertainty − resolution + reliability` holds
+ * to float tolerance precisely because each term is computed over the *same*
+ * buckets the curve is drawn from.
+ */
+export interface Decomposition {
+  /** `b̄·(1−b̄)` — inherent difficulty of the user's question mix (uncontrollable). */
+  uncertainty: number;
+  /** `Σ (nₖ/N)·(freqₖ − b̄)²` — how much the user's confidence levels sort outcomes. Higher is better. */
+  resolution: number;
+  /** `Σ (nₖ/N)·(conf̄ₖ − freqₖ)²` — squared calibration gap of the curve, size-weighted. Lower is better. */
+  reliability: number;
+}
+
+/**
+ * Decompose the Brier over the v1 calibration deciles (reuses
+ * `calibrationBuckets`, so voids/open are excluded through the one predicate).
+ * With `b̄` the overall YES rate, `nₖ/N` each bucket's share, and `conf̄ₖ`/`freqₖ`
+ * each bucket's mean confidence / observed hit rate:
+ *   uncertainty = b̄·(1−b̄)
+ *   resolution  = Σ (nₖ/N)·(freqₖ − b̄)²
+ *   reliability = Σ (nₖ/N)·(conf̄ₖ − freqₖ)²
+ *
+ * The identity `brier = uncertainty − resolution + reliability` is exact only
+ * when each occupied bucket holds a single confidence value; a bucket that mixes
+ * confidences leaves a within-bin-variance residual (a real term, not float
+ * noise). The curve's deciles are wide, so callers comparing against the raw
+ * Brier should expect equality only for single-valued buckets — the test
+ * fixtures are built that way deliberately.
+ *
+ * Ungated: returns the raw components for any resolved history (the sample-size
+ * gate lives on `boldness`, the user-facing stat). `null` only when nothing is
+ * resolved — never a NaN component.
+ */
+export function decompose(preds: Scorable[]): Decomposition | null {
+  const resolved = resolvedNonVoid(preds);
+  const N = resolved.length;
+  if (N === 0) return null;
+
+  const bBar = mean(resolved.map((p) => (p.outcome ? 1 : 0)));
+  const buckets = calibrationBuckets(preds);
+
+  let resolution = 0;
+  let reliability = 0;
+  for (const b of buckets) {
+    const share = b.n / N;
+    resolution += share * (b.actualFrequency - bBar) ** 2;
+    reliability += share * (b.meanConfidence - b.actualFrequency) ** 2;
+  }
+
+  return { uncertainty: bBar * (1 - bBar), resolution, reliability };
+}
+
+/**
+ * Boldness: `resolution / uncertainty`, clamped to [0, 1] — a user-facing 0–1
+ * stat catching the honest-but-timid 50%-hugger the calibration curve alone
+ * congratulates (their resolution ≈ 0). `resolution ≤ uncertainty` always holds
+ * mathematically, so the clamp only guards float drift at the edges.
+ *
+ * Gated behind the *same* sample threshold as the calibration curve
+ * (`CURVE_UNLOCK_N`) — resolution is noisier than reliability at low N, same
+ * gate, no exceptions. The division is guarded when `uncertainty === 0`
+ * (`b̄ ∈ {0, 1}`, an all-YES or all-NO history): `null`, never Infinity or NaN.
+ */
+export function boldness(preds: Scorable[]): number | null {
+  if (resolvedNonVoid(preds).length < CURVE_UNLOCK_N) return null;
+  const d = decompose(preds);
+  if (d === null || d.uncertainty === 0) return null;
+  return Math.min(1, Math.max(0, d.resolution / d.uncertainty));
+}
+
 // --- directional sentences (deterministic templates, no AI) ----------------
 
 // How close to a boundary still reads as "on it". Tunable; kept small so the
