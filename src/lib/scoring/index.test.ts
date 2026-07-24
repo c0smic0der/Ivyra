@@ -5,6 +5,7 @@ import {
   biasByGroup,
   biasScore,
   biasSentence,
+  boldnessSentence,
   brierScore,
   brierSentence,
   calibrationBuckets,
@@ -255,6 +256,29 @@ describe("directional sentences (deterministic, no AI)", () => {
 
   it("biasSentence reports near-zero bias as well calibrated", () => {
     expect(biasSentence(0.01)).toMatch(/well calibrated/i);
+  });
+
+  it("boldnessSentence calls a near-zero value hedging", () => {
+    // A 50%-hugger: confidence barely separates outcomes.
+    expect(boldnessSentence(0.02)).toMatch(/hedging/i);
+  });
+
+  it("boldnessSentence calls a mid value partial signal that hugs the middle", () => {
+    const s = boldnessSentence(0.3);
+    expect(s).toMatch(/some signal/i);
+    expect(s).toMatch(/hugs the middle/i);
+  });
+
+  it("boldnessSentence credits a healthy value as carrying real information", () => {
+    expect(boldnessSentence(0.7)).toMatch(/real information/i);
+  });
+
+  it("boldnessSentence never leaks decomposition jargon into the UI", () => {
+    // The three bands are the only user-facing copy for this stat; none of them
+    // may say Murphy / resolution / uncertainty (docs §4.7 UI constraint).
+    for (const v of [0.02, 0.3, 0.7]) {
+      expect(boldnessSentence(v)).not.toMatch(/murphy|resolution|uncertainty/i);
+    }
   });
 });
 

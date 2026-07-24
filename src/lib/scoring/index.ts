@@ -373,3 +373,26 @@ export function biasSentence(bias: number): string {
   const direction = bias > 0 ? "overconfident" : "underconfident";
   return `You run ${points} points ${direction}.`;
 }
+
+// Where the boldness reading flips. Below LOW, the forecaster's confidence
+// levels barely separate outcomes (the 50%-hugger); at or above HEALTHY they
+// carry real signal. Heuristic bands, not a theorem — kept here so the sentence
+// and the gauge can never disagree about where the verdict changes. The gauge's
+// track labels ("hedging" ↔ "informative") name these same two ends.
+const BOLDNESS_LOW = 0.15;
+const BOLDNESS_HEALTHY = 0.45;
+
+/**
+ * One-line reading of a boldness value in [0, 1] (see `boldness`). Deliberately
+ * in plain English: no decomposition jargon, describing only whether the user's
+ * confidence levels sort what happens from what doesn't.
+ */
+export function boldnessSentence(value: number): string {
+  if (value < BOLDNESS_LOW) {
+    return "Your confidence levels barely distinguish outcomes — you're hedging near 50/50.";
+  }
+  if (value < BOLDNESS_HEALTHY) {
+    return "Your confidence carries some signal, but it still hugs the middle — commit harder when the evidence lets you.";
+  }
+  return "Your numbers carry real information — your confidence genuinely sorts what comes true from what doesn't.";
+}

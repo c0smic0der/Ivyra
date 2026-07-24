@@ -2,7 +2,12 @@ import { and, asc, eq, inArray } from "drizzle-orm";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { db, schema } from "@/db";
-import { buildInsightsViewModel, type BiasBreakdownRow, type InsightsInput } from "@/lib/insights/insightsCore";
+import {
+  buildInsightsViewModel,
+  type BiasBreakdownRow,
+  type InsightsInput,
+  type InsightsViewModel,
+} from "@/lib/insights/insightsCore";
 import { HISTORY_CATEGORIES, type HistoryItem } from "@/lib/insights/historyView";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardLabel } from "@/components/ui/Card";
@@ -17,6 +22,47 @@ function LockStateCard({ sentence }: { sentence: string }) {
     <p className="rounded-xl border border-dashed border-border p-4 text-sm text-ink-secondary">
       {sentence}
     </p>
+  );
+}
+
+/**
+ * The Boldness gauge: the 0–1 value, a fill bar (same track pattern the landing
+ * page uses), its directional sentence, and a plain-English "what does this
+ * mean?" line. Every number arrives pre-computed on `vm.boldness` — the
+ * component does no math, only presents it.
+ */
+function BoldnessGauge({ boldness }: { boldness: InsightsViewModel["boldness"] }) {
+  if (!boldness.unlocked) {
+    return (
+      <div className="mt-2">
+        <LockStateCard sentence={boldness.unlockSentence!} />
+      </div>
+    );
+  }
+
+  // Unlocked but not yet readable (no outcome variety): narrate, no number/bar.
+  if (boldness.value === null) {
+    return <p className="mt-2 text-sm text-ink-secondary">{boldness.sentence}</p>;
+  }
+
+  const fill = Math.round(boldness.value * 100);
+  return (
+    <>
+      <p className="mt-2 text-5xl font-semibold tabular-nums text-ink">{boldness.value.toFixed(2)}</p>
+      <div className="mt-3 h-2 rounded-full bg-surface" role="presentation">
+        <div className="h-full rounded-full bg-accent" style={{ width: `${fill}%` }} />
+      </div>
+      <div className="mt-1 flex justify-between text-[10px] font-medium uppercase tracking-wide text-ink-tertiary">
+        <span>Hedging</span>
+        <span>Informative</span>
+      </div>
+      <p className="mt-3 text-sm text-ink-secondary">{boldness.sentence}</p>
+      <p className="mt-2 text-xs text-ink-tertiary">
+        Boldness runs 0–1: how much your confidence levels separate what comes true from what
+        doesn&apos;t. Near 0 means you cluster around 50/50; near 1 means you commit — and are right
+        to.
+      </p>
+    </>
   );
 }
 
@@ -99,7 +145,7 @@ export default async function InsightsPage() {
               <p className="font-medium text-ink">No resolutions yet</p>
               <p className="mt-1">
                 Insights unlock as you resolve predictions — bias score at 10, progress trend at
-                25, calibration curve at 30.
+                25, calibration curve and boldness at 30.
               </p>
               <Link href="/dashboard" className="mt-2 inline-block font-medium text-accent hover:underline">
                 Go make a prediction →
@@ -149,6 +195,11 @@ export default async function InsightsPage() {
                     )}
                   </Card>
                 </div>
+
+                <Card>
+                  <CardLabel>Boldness</CardLabel>
+                  <BoldnessGauge boldness={vm.boldness} />
+                </Card>
 
                 {vm.bias.unlocked &&
                   (vm.bias.byCategory.length > 0 || vm.bias.byReasoningType.length > 0) && (

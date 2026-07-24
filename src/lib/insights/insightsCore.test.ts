@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   biasScore,
   BIAS_UNLOCK_N,
+  boldness,
+  boldnessSentence,
   brierScore,
   brierSentence,
   biasSentence,
@@ -61,6 +63,48 @@ describe("buildInsightsViewModel — lock-state thresholds", () => {
     expect(buildInsightsViewModel(resolvedFixture(CURVE_UNLOCK_N), NOW).curve.unlocked).toBe(true);
   });
 
+  it("boldness rides the curve's gate — unlocks exactly at CURVE_UNLOCK_N (29 locked, 30 unlocked)", () => {
+    expect(buildInsightsViewModel(resolvedFixture(CURVE_UNLOCK_N - 1), NOW).boldness.unlocked).toBe(
+      false,
+    );
+    expect(buildInsightsViewModel(resolvedFixture(CURVE_UNLOCK_N), NOW).boldness.unlocked).toBe(
+      true,
+    );
+  });
+
+  it("boldness locks and unlocks in lockstep with the curve at every N", () => {
+    for (const count of [0, 12, 25, 29, 30, 40]) {
+      const vm = buildInsightsViewModel(resolvedFixture(count), NOW);
+      expect(vm.boldness.unlocked).toBe(vm.curve.unlocked);
+    }
+  });
+
+  it("locked boldness reports how many more resolutions are needed", () => {
+    expect(buildInsightsViewModel(resolvedFixture(0), NOW).boldness.unlockSentence).toBe(
+      "30 more resolutions before this is meaningful.",
+    );
+    expect(buildInsightsViewModel(resolvedFixture(29), NOW).boldness.unlockSentence).toBe(
+      "1 more resolution before this is meaningful.",
+    );
+  });
+
+  it("boldness past the gate but with no outcome variety is unlocked yet narrated, never a blank number", () => {
+    // 30 all-YES resolutions: past the gate, but b̄=1 ⇒ nothing for confidence
+    // to sort ⇒ boldness() is null. The card must show the degenerate sentence,
+    // not a NaN/blank value or a false lock.
+    const allYes = Array.from({ length: CURVE_UNLOCK_N }, (_, i) =>
+      resolvedInput(i, { outcome: true }),
+    );
+    const vm = buildInsightsViewModel(allYes, NOW);
+    expect(vm.boldness.unlocked).toBe(true);
+    expect(vm.boldness.unlockSentence).toBeNull();
+    expect(vm.boldness.value).toBeNull();
+    expect(vm.boldness.sentence).toBe(
+      "Every prediction so far resolved the same way — there's nothing yet for your confidence to sort.",
+    );
+    expect(JSON.stringify(vm.boldness)).not.toMatch(/NaN/);
+  });
+
   it("the three gates are independent — n=15 unlocks bias only", () => {
     const vm = buildInsightsViewModel(resolvedFixture(15), NOW);
     expect(vm.bias.unlocked).toBe(true);
@@ -100,6 +144,11 @@ describe("buildInsightsViewModel — 0 resolutions", () => {
     expect(vm.progress.trend).toEqual([]);
     expect(vm.progress.last20).toBeNull();
     expect(vm.progress.sentence).toBeNull();
+
+    expect(vm.boldness.unlocked).toBe(false);
+    expect(vm.boldness.unlockSentence).toBe("30 more resolutions before this is meaningful.");
+    expect(vm.boldness.value).toBeNull();
+    expect(vm.boldness.sentence).toBeNull();
 
     expect(vm.runningBrier.value).toBeNull();
     expect(vm.runningBrier.sentence).toBeNull();
@@ -145,6 +194,13 @@ describe("buildInsightsViewModel — 12 resolutions", () => {
     expect(vm.progress.unlockSentence).toBe("12 of 25 resolutions until your progress chart unlocks.");
   });
 
+  it("boldness stays locked with an honest 'more resolutions' progress state", () => {
+    expect(vm.boldness.unlocked).toBe(false);
+    expect(vm.boldness.unlockSentence).toBe("18 more resolutions before this is meaningful.");
+    expect(vm.boldness.value).toBeNull();
+    expect(vm.boldness.sentence).toBeNull();
+  });
+
   it("breakdown row counts sum to the resolved-non-void population", () => {
     const total = resolvedNonVoid(preds).length;
     expect(vm.bias.byCategory.reduce((sum, r) => sum + r.n, 0)).toBe(total);
@@ -170,6 +226,19 @@ describe("buildInsightsViewModel — 40 resolutions", () => {
 
   it("progress.trend has one point per resolution", () => {
     expect(vm.progress.trend).toHaveLength(40);
+  });
+
+  it("boldness is unlocked with the value + sentence straight from the scoring module", () => {
+    expect(vm.boldness.unlocked).toBe(true);
+    expect(vm.boldness.unlockSentence).toBeNull();
+
+    const expected = boldness(resolved);
+    expect(expected).not.toBeNull();
+    expect(vm.boldness.value).toBe(expected);
+    // 0–1 scale, no inline math: the page prints exactly what scoring returned.
+    expect(vm.boldness.value!).toBeGreaterThanOrEqual(0);
+    expect(vm.boldness.value!).toBeLessThanOrEqual(1);
+    expect(vm.boldness.sentence).toBe(boldnessSentence(expected!));
   });
 
   it("curve.points and progress.trend are not reinvented — the plotted geometry matches direct scoring calls", () => {

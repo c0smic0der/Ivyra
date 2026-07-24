@@ -11,6 +11,8 @@ import {
   biasByGroup,
   biasScore,
   biasSentence,
+  boldness,
+  boldnessSentence,
   brierScore,
   brierSentence,
   bucketIndex,
@@ -112,6 +114,23 @@ export interface InsightsViewModel {
     unlocked: boolean;
     unlockSentence: string | null;
     points: CalibrationPoint[];
+  };
+
+  /**
+   * The Boldness gauge — how much the user's confidence levels actually sort
+   * outcomes, on a 0–1 scale. Gated behind the *same* sample threshold as the
+   * curve (the underlying stat is noisier at low N). `value` is null when locked
+   * OR when it can't be read even with enough data (every outcome came out the
+   * same way, so there's nothing to sort); `sentence` still explains that case.
+   */
+  boldness: {
+    unlocked: boolean;
+    /** "N more resolutions before this is meaningful." — null once unlocked. */
+    unlockSentence: string | null;
+    /** 0–1 boldness, or null when locked / not yet readable. */
+    value: number | null;
+    /** Directional reading of `value`, or the degenerate-history explanation. */
+    sentence: string | null;
   };
 
   progress: {
@@ -266,6 +285,18 @@ export function buildInsightsViewModel(preds: InsightsInput[], now: Date): Insig
   const curveUnlocked = n >= CURVE_UNLOCK_N;
   const points = buildCalibrationPoints(resolved);
 
+  // Boldness rides the curve's gate. `boldness()` also returns null when the
+  // history has enough data but no outcome variety (all YES / all NO) — a real
+  // state we narrate rather than hide, so the card never shows a blank number.
+  const boldnessUnlocked = n >= CURVE_UNLOCK_N;
+  const boldnessValue = boldness(resolved);
+  const boldnessSentenceText =
+    boldnessValue !== null
+      ? boldnessSentence(boldnessValue)
+      : boldnessUnlocked
+        ? "Every prediction so far resolved the same way — there's nothing yet for your confidence to sort."
+        : null;
+
   const progressUnlocked = n >= PROGRESS_UNLOCK_N;
   const trend = buildProgressPoints(resolved);
   const last20 = rollingBrier(resolved, 20);
@@ -290,6 +321,15 @@ export function buildInsightsViewModel(preds: InsightsInput[], now: Date): Insig
       unlocked: curveUnlocked,
       unlockSentence: curveUnlocked ? null : progressCopy(n, CURVE_UNLOCK_N, "curve"),
       points,
+    },
+
+    boldness: {
+      unlocked: boldnessUnlocked,
+      unlockSentence: boldnessUnlocked
+        ? null
+        : `${CURVE_UNLOCK_N - n} more resolution${CURVE_UNLOCK_N - n === 1 ? "" : "s"} before this is meaningful.`,
+      value: boldnessValue,
+      sentence: boldnessSentenceText,
     },
 
     progress: {
