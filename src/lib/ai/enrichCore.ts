@@ -12,10 +12,13 @@ export const DAILY_AI_CALL_CAP = 25;
 /**
  * Pure boundary check.
  *
- * TODO(atomic-cap): this read-then-act gate has a TOCTOU race — concurrent
- * requests all pass against a stale pre-call count. The post-mortem route
- * mitigates it by reserving the ai_calls row before streaming; the full fix is
- * an atomic conditional insert in the shared machinery (see docs/TODO.md).
+ * NOTE: this is no longer the enforcement gate — enforcement is the atomic
+ * `reserveAiCallIfUnderCap` (enrich.ts), which reserves a slot under a per-user
+ * advisory lock so concurrent requests can't overrun the cap. This predicate
+ * now only drives READ-ONLY cap displays (the insights page / scoped-insight
+ * card deciding whether to offer the "Generate" affordance). A stale count here
+ * just means the UI briefly offers a button the atomic reserve will then refuse
+ * — a cosmetic race, never an over-cap spend.
  */
 export function isUnderDailyCap(callsToday: number, cap: number = DAILY_AI_CALL_CAP): boolean {
   return callsToday < cap;

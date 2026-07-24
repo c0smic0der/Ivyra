@@ -32,7 +32,9 @@ export function PredictionForm({
   const [text, setText] = useState(initialText);
   const [confidence, setConfidence] = useState(initialConfidence);
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
-  const [minResolutionDate] = useState(() => new Date(Date.now() + 86_400_000).toISOString().slice(0, 10));
+  // Today (UTC) is the earliest allowed resolution date — same-day predictions
+  // are permitted; the server enforces the same >= today rule (validation.ts).
+  const [minResolutionDate] = useState(() => new Date().toISOString().slice(0, 10));
   const { result: trackRecordResult } = useTrackRecordPanel(text);
 
   useEffect(() => {

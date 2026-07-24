@@ -28,6 +28,7 @@ import { isMiss } from "@/lib/ai/postmortemCore";
 import {
   biasScore,
   biasSentence,
+  boldnessRatio,
   brierSentence,
   calibrationBuckets,
   calibrationByGroup,
@@ -40,7 +41,7 @@ import {
   rollingBrier,
   ROLLING_WINDOW,
   runningBrier,
-  type Decomposition,
+  type Profile,
   type Scorable,
 } from "@/lib/scoring";
 
@@ -82,18 +83,6 @@ export function selectScope<T extends Scorable & { category?: string | null }>(
   if (scope === "recent") return resolvedNonVoid(preds).slice(-ROLLING_WINDOW);
   const cat = scopeCategory(scope);
   return cat === null ? [] : preds.filter((p) => p.category === cat);
-}
-
-/**
- * Boldness (resolution ÷ uncertainty, clamped to [0, 1]) WITHOUT the curve's
- * sample gate — the profile is assignable over the Recent scope's ~20 rows,
- * below `CURVE_UNLOCK_N`, so it can't route through the gated `boldness()`. The
- * division is guarded when `uncertainty === 0` (all-YES / all-NO): null, so the
- * profile degrades to insufficient_data rather than dividing by zero.
- */
-function profileBoldness(d: Decomposition | null): number | null {
-  if (d === null || d.uncertainty === 0) return null;
-  return Math.min(1, Math.max(0, d.resolution / d.uncertainty));
 }
 
 /**
@@ -217,8 +206,23 @@ export function buildScopeStats(preds: InsightPrediction[], scope: InsightScope)
   const resolved = resolvedNonVoid(selectScope(preds, scope));
   const n = resolved.length;
   const d = decompose(resolved);
-  const boldness = profileBoldness(d);
-  const profile = classifyProfile({ n, reliability: d?.reliability ?? null, boldness });
+  // The profile uses the UNGATED boldness ratio (no CURVE_UNLOCK_N), since it's
+  // assignable over the Recent scope's ~20 rows. Same math as the user-facing
+  // boldness() stat — one implementation in the scoring module, two gating
+  // policies — so the profile's boldness input can never drift from the stat.
+  const boldness = boldnessRatio(resolved);
+  // classifyProfile is scope-agnostic and only knows PROFILE_UNLOCK_N. A category
+  // scope has its OWN, potentially higher noise floor (CATEGORY_UNLOCK_N), so
+  // enforce it here — this is the single authoritative gate: generateInsight
+  // checks `profile === "insufficient_data"` server-side before spending a call,
+  // and the UI reads it for the lock message. Driving the category gate off its
+  // own constant (rather than relying on CATEGORY_UNLOCK_N === PROFILE_UNLOCK_N)
+  // means a thin category can never pass the server gate if the two ever diverge.
+  const isCategoryScope = scopeCategory(scope) !== null;
+  const profile: Profile =
+    isCategoryScope && n < CATEGORY_UNLOCK_N
+      ? "insufficient_data"
+      : classifyProfile({ n, reliability: d?.reliability ?? null, boldness });
 
   return {
     scope,

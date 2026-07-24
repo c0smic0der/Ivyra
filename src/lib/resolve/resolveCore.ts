@@ -7,7 +7,6 @@
 //
 // The Brier here comes straight from the scoring module — the LLM never scores.
 
-import { isUnderDailyCap } from "@/lib/ai/enrichCore";
 import { brierScore, resolvedNonVoid, runningBrier, type Scorable } from "@/lib/scoring";
 
 export type ResolveChoice = "yes" | "no" | "void";
@@ -55,26 +54,27 @@ export function computeUserStats(preds: Scorable[]): UserStatsSnapshot {
   return { nResolved: scored.length, runningBrier: runningBrier(preds) };
 }
 
-export type PostmortemDecision = "return_stored" | "skip" | "over_cap" | "generate";
+export type PostmortemDecision = "return_stored" | "skip" | "generate";
 
 /**
  * Decides what the post-mortem endpoint should do, before any network call.
  * Order matters: a stored post-mortem is returned verbatim (idempotent, never
- * regenerated or re-charged); Void / no-reasoning skip entirely; only then does
- * the daily cap gate a fresh generation. "over_cap" is the graceful-degrade
- * branch — the score still rendered, the narrative just says it's unavailable.
+ * regenerated or re-charged); Void / no-reasoning skip entirely; otherwise a
+ * fresh generation is warranted. The daily cap is NOT decided here anymore — the
+ * route atomically reserves a slot via `reserveAiCallIfUnderCap` on a "generate"
+ * decision, and a null reservation is the graceful over-cap degrade (the score
+ * still rendered; the narrative just says it's unavailable). Folding the cap into
+ * this pure predicate would reintroduce the read-then-act race the reservation
+ * closes.
  */
 export function postmortemDecision(input: {
   isVoid: boolean;
   hasReasoning: boolean;
   existingPostmortem: string | null;
-  callsToday: number;
-  cap?: number;
 }): PostmortemDecision {
   if (input.existingPostmortem && input.existingPostmortem.trim().length > 0) {
     return "return_stored";
   }
   if (input.isVoid || !input.hasReasoning) return "skip";
-  if (!isUnderDailyCap(input.callsToday, input.cap)) return "over_cap";
   return "generate";
 }

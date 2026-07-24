@@ -3,7 +3,6 @@ import {
   dueDateString,
   groupDueByUser,
   isAuthorized,
-  notYetReminded,
   type DuePrediction,
 } from "@/lib/reminders/remindersCore";
 
@@ -47,39 +46,11 @@ describe("dueDateString — UTC calendar date (pure)", () => {
   });
 });
 
-describe("notYetReminded — idempotency filter (pure)", () => {
-  const row = (id: string, remindedAt: string | null): DuePrediction => ({
-    id,
-    userId: "user-a",
-    text: `prediction ${id}`,
-    remindedAt,
-  });
-
-  it("keeps rows that have never been reminded", () => {
-    const rows = [row("p1", null), row("p2", null)];
-    expect(notYetReminded(rows)).toEqual(rows);
-  });
-
-  it("drops rows already reminded, so a second run in the same window sends nothing", () => {
-    const firstRun = [row("p1", null), row("p2", null)];
-    // Simulate the route marking both rows reminded after a successful send,
-    // then invoking the route again in the same window.
-    const secondRun = firstRun.map((r) => ({ ...r, remindedAt: "2026-07-22T13:00:00.000Z" }));
-    expect(notYetReminded(secondRun)).toEqual([]);
-  });
-
-  it("only drops the specific rows already reminded, in a mixed batch", () => {
-    const rows = [row("p1", "2026-07-22T13:00:00.000Z"), row("p2", null)];
-    expect(notYetReminded(rows)).toEqual([row("p2", null)]);
-  });
-});
-
 describe("groupDueByUser — pure grouping", () => {
   const row = (id: string, userId: string): DuePrediction => ({
     id,
     userId,
     text: `prediction ${id}`,
-    remindedAt: null,
   });
 
   it("returns an empty map for no rows", () => {

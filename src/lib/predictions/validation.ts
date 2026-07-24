@@ -34,17 +34,23 @@ export const createPredictionSchema = z
       }, "Invalid date"),
   })
   .refine(
-    // Compare as UTC calendar dates — the ONE convention the whole system uses:
-    // `predictions.resolution_date` is a Postgres `date` (no time), and the
-    // reminders cron matches "due today" via dueDateString(now) = the UTC date
-    // (see remindersCore.ts). The previous local-midnight comparison drifted
-    // with the host's timezone, so capture and the cron could disagree on which
-    // calendar day a prediction belonged to, and "today" was accepted/rejected
-    // differently depending on the server's offset. Zero-padded ISO dates sort
-    // lexicographically == chronologically, so a string compare is exact here.
-    (data) => data.resolutionDate > new Date().toISOString().slice(0, 10),
+    // Same-day allowed, past rejected (>= today). Compare as UTC calendar dates —
+    // the ONE convention the whole system uses: `predictions.resolution_date` is
+    // a Postgres `date` (no time), and the reminders cron matches "due today" via
+    // dueDateString(now) = the UTC date (see remindersCore.ts). A local-midnight
+    // comparison drifted with the host's timezone, so capture and the cron could
+    // disagree on which calendar day a prediction belonged to. Zero-padded ISO
+    // dates sort lexicographically == chronologically, so a string compare is
+    // exact here.
+    //
+    // Today is allowed deliberately (product decision, docs/TODO.md): fast
+    // feedback loops are the mechanism calibration training relies on, and a
+    // same-day prediction — resolvable the moment its date passes — is the
+    // shortest, lowest-friction horizon. It pairs with early resolution, which
+    // lets an already-settled prediction be closed before its date.
+    (data) => data.resolutionDate >= new Date().toISOString().slice(0, 10),
     {
-      message: "Resolution date must be in the future",
+      message: "Resolution date can’t be in the past",
       path: ["resolutionDate"],
     },
   );

@@ -88,27 +88,26 @@ describe("computeUserStats — voids are excluded from the cached stats", () => 
   });
 });
 
-describe("postmortemDecision — the cap fallback and skip branches", () => {
+describe("postmortemDecision — the generate/skip/stored branches", () => {
+  // The cap is no longer decided here — it's the route's atomic reservation. This
+  // predicate only distinguishes stored / skip / generate; "over cap" surfaces as
+  // a null reservation on a "generate" decision.
   const generate = {
     isVoid: false,
     hasReasoning: true,
     existingPostmortem: null,
-    callsToday: 0,
   };
 
-  it("generates when under cap with reasoning on a non-void resolution", () => {
+  it("generates with reasoning on a non-void, un-generated resolution", () => {
     expect(postmortemDecision(generate)).toBe("generate");
   });
 
-  it("falls back to over_cap at the daily cap (the graceful-degrade branch)", () => {
-    expect(postmortemDecision({ ...generate, callsToday: 25 })).toBe("over_cap");
-    expect(postmortemDecision({ ...generate, callsToday: 3, cap: 3 })).toBe("over_cap");
-  });
-
   it("returns a stored post-mortem verbatim without regenerating or charging", () => {
-    expect(
-      postmortemDecision({ ...generate, existingPostmortem: "already written", callsToday: 25 }),
-    ).toBe("return_stored");
+    expect(postmortemDecision({ ...generate, existingPostmortem: "already written" })).toBe(
+      "return_stored",
+    );
+    // Whitespace-only stored text is treated as absent, not a valid stored body.
+    expect(postmortemDecision({ ...generate, existingPostmortem: "   " })).toBe("generate");
   });
 
   it("skips Void and no-reasoning resolutions", () => {

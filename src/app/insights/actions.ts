@@ -4,8 +4,7 @@ import { and, asc, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db, schema } from "@/db";
 import { HAIKU_MODEL } from "@/lib/ai/anthropic";
-import { countAiCallsToday, logAiCall } from "@/lib/ai/enrich";
-import { isUnderDailyCap } from "@/lib/ai/enrichCore";
+import { finalizeAiCall, reserveAiCallIfUnderCap } from "@/lib/ai/enrich";
 import { isValidScope, runInsightWithRepair, runScopedInsight } from "@/lib/ai/scopedInsightCore";
 import { buildScopeStats, type InsightPrediction } from "@/lib/insights/scopedInsightView";
 import { createClient } from "@/lib/supabase/server";
@@ -80,10 +79,18 @@ export async function generateInsight(input: { scope: string }): Promise<Generat
     // and the UI already hides the action, but guard the action too.
     if (stats.profile === "insufficient_data") return { ok: false, error: "insufficient_data" };
 
-    // Daily cap gate. Over cap: no call, honest error; the page still shows the
-    // cached insight (if any) and the fallback.
-    const callsToday = await countAiCallsToday(user.id);
-    if (!isUnderDailyCap(callsToday)) return { ok: false, error: "over_cap" };
+    // Daily cap gate — atomic. Null => over cap: no call, honest error; the page
+    // still shows the cached insight (if any) and the fallback. Reserving here
+    // (rather than counting-then-logging) is what makes "Regenerate" un-abusable:
+    // every re-click / scope-cycle must win an atomic slot, so rapid-fire clicks
+    // can reserve at most (cap - used) slots total, never overrun.
+    const callId = await reserveAiCallIfUnderCap({
+      userId: user.id,
+      predictionId: null,
+      purpose: "scoped_insight",
+      model: HAIKU_MODEL,
+    });
+    if (callId === null) return { ok: false, error: "over_cap" };
 
     const result = await runScopedInsight(stats, {
       runInsight: (prompt) => runInsightWithRepair(prompt),
@@ -103,14 +110,11 @@ export async function generateInsight(input: { scope: string }): Promise<Generat
             set: { bodyText, nResolvedAtGeneration, promptVersion, statsJson, createdAt: new Date() },
           })
           .then(() => undefined),
-      logCall: (usage) =>
-        logAiCall({
-          userId: user.id,
-          predictionId: null,
-          purpose: "scoped_insight",
-          model: HAIKU_MODEL,
-          ...usage,
-        }),
+      // Fill the reserved slot with real usage. runScopedInsight always calls
+      // this (0/0 on a thrown call, real tokens otherwise), so a failed insight
+      // still counts as a spent attempt — same "always counted" contract as
+      // enrichment, and the reason a failing regen can't be looped for free.
+      logCall: (usage) => finalizeAiCall(callId, user.id, usage),
     });
 
     if (!result.ok || result.bodyText === null) return { ok: false, error: "ai_failed" };

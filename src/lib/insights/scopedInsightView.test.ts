@@ -102,6 +102,23 @@ describe("buildScopeStats — scope & profile", () => {
     expect(work.byCategory.map((r) => r.key)).toEqual(["work"]);
   });
 
+  it("gates a category scope on its own CATEGORY_UNLOCK_N floor, not the profile floor", () => {
+    // One short of the category floor reads as insufficient_data, so
+    // generateInsight's server gate (profile === "insufficient_data") refuses to
+    // spend a call — driven by CATEGORY_UNLOCK_N, so the category gate stays
+    // correct even if it ever diverges from PROFILE_UNLOCK_N.
+    const thin = series(CATEGORY_UNLOCK_N - 1, 0.9, () => true).map((p) => ({ ...p, category: "work" }));
+    expect(buildScopeStats(thin, "category:work").n).toBe(CATEGORY_UNLOCK_N - 1);
+    expect(buildScopeStats(thin, "category:work").profile).toBe("insufficient_data");
+
+    // Well past the floor with a readable pattern, it profiles rather than locking.
+    const unlocked = [
+      ...series(CATEGORY_UNLOCK_N, 0.9, () => true),
+      ...series(CATEGORY_UNLOCK_N, 0.1, () => false),
+    ].map((p) => ({ ...p, category: "work" }));
+    expect(buildScopeStats(unlocked, "category:work").profile).not.toBe("insufficient_data");
+  });
+
   it("classifies the profile over the scope", () => {
     // 0.9→YES and 0.1→NO: perfectly calibrated, confidence sorts outcomes hard.
     const bold = [...series(15, 0.9, () => true), ...series(15, 0.1, () => false)];

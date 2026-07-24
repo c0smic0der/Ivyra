@@ -37,20 +37,13 @@ export interface DuePrediction {
   id: string;
   userId: string;
   text: string;
-  remindedAt: string | Date | null;
 }
 
-/**
- * Idempotency gate: drops rows a previous run already emailed. query.ts
- * selects on status/resolution_date alone (cheap, cacheable); this is the one
- * place that decides "already handled," so it's covered by a unit test
- * instead of a live-DB integration test — same DB/network vs. pure split as
- * the rest of this file. A second run in the same window sees every row's
- * `remindedAt` already set and sends nothing.
- */
-export function notYetReminded(rows: DuePrediction[]): DuePrediction[] {
-  return rows.filter((row) => row.remindedAt === null);
-}
+// Idempotency is no longer a pure post-filter (`notYetReminded` was removed): it
+// now lives in the atomic claim itself (query.ts `claimDueReminders`), which
+// marks and returns rows in one statement so a returned row is claimed by
+// exactly one run. That closes the concurrency gap the read-then-filter-then-mark
+// sequence left open, and there's nothing left for a pure filter to re-check.
 
 /** Groups the flat query result by user, feeding "one email per user." */
 export function groupDueByUser(rows: DuePrediction[]): Map<string, DuePrediction[]> {

@@ -1,8 +1,7 @@
 "use server";
 
 import { embeddingCostUsd, embedTextWithUsage, OPENAI_EMBEDDING_MODEL } from "@/lib/ai/embedding";
-import { countAiCallsToday, logAiCall } from "@/lib/ai/enrich";
-import { isUnderDailyCap } from "@/lib/ai/enrichCore";
+import { finalizeAiCall, releaseAiCall, reserveAiCallIfUnderCap } from "@/lib/ai/enrich";
 import { createClient } from "@/lib/supabase/server";
 import { matchBaseRateKind } from "@/lib/trackRecord/baseRateHeuristic";
 import { getBaseRate } from "@/lib/trackRecord/baseRates";
@@ -60,19 +59,22 @@ export async function getTrackRecordPanel(draftText: string): Promise<TrackRecor
     } = await supabase.auth.getUser();
     if (!user) return { kind: "none" };
 
-    const callsToday = await countAiCallsToday(user.id);
-    if (isUnderDailyCap(callsToday)) {
+    // Atomically reserve the daily-cap slot before the embed (null => over cap).
+    // The slot is finalized with the real OpenAI cost on a hit, or released if
+    // no vector comes back, so a failed/no-key embed never burns the cap.
+    const callId = await reserveAiCallIfUnderCap({
+      userId: user.id,
+      predictionId: null,
+      purpose: "track_record_embed",
+      model: OPENAI_EMBEDDING_MODEL,
+    });
+    if (callId !== null) {
       const start = Date.now();
       const embedResult = await embedTextWithUsage(bounded, null);
       if (embedResult) {
-        // Log only when a real embedding happened (null degrades to base-rate
-        // below without logging). Real OpenAI token count + per-provider cost —
-        // not the Haiku rate logAiCall would otherwise assume.
-        await logAiCall({
-          userId: user.id,
-          predictionId: null,
-          purpose: "track_record_embed",
-          model: OPENAI_EMBEDDING_MODEL,
+        // Real OpenAI token count + per-provider cost — not the Haiku rate the
+        // finalize default would otherwise assume.
+        await finalizeAiCall(callId, user.id, {
           inputTokens: embedResult.inputTokens,
           outputTokens: 0,
           costUsd: embeddingCostUsd(embedResult.inputTokens),
@@ -97,6 +99,10 @@ export async function getTrackRecordPanel(draftText: string): Promise<TrackRecor
             })),
           };
         }
+      } else {
+        // No vector (no key / provider failure): free the reserved slot so the
+        // panel's degrade-to-base-rate path doesn't cost the user a cap slot.
+        await releaseAiCall(callId, user.id);
       }
     }
 

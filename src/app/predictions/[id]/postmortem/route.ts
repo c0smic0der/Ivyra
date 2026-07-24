@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { getAnthropicClient, HAIKU_MODEL } from "@/lib/ai/anthropic";
-import { countAiCallsToday, finalizeAiCall, reserveAiCall } from "@/lib/ai/enrich";
+import { finalizeAiCall, reserveAiCallIfUnderCap } from "@/lib/ai/enrich";
 import {
   buildPostmortemPrompt,
   consumePostmortemStream,
@@ -53,17 +53,14 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     if (row.status === "open") return textResponse("", 409);
 
     const hasReasoning = row.reasoning !== null && row.reasoning.trim().length > 0;
-    const callsToday = await countAiCallsToday(user.id);
     const decision = postmortemDecision({
       isVoid: row.status === "void",
       hasReasoning,
       existingPostmortem: row.postmortem,
-      callsToday,
     });
 
     if (decision === "return_stored") return textResponse(row.postmortem ?? "");
     if (decision === "skip") return textResponse("");
-    if (decision === "over_cap") return textResponse(OVER_CAP_MESSAGE);
 
     // decision === "generate" — reasoning is guaranteed present here.
     const reasoning = row.reasoning as string;
@@ -96,15 +93,18 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     const client = getAnthropicClient();
     const encoder = new TextEncoder();
 
-    // Reserve the cap slot BEFORE streaming so concurrent requests can't all
-    // pass the gate against a stale pre-call count (closes the TOCTOU window the
-    // security review flagged). Real token counts are filled in `finally`.
-    const callId = await reserveAiCall({
+    // Atomically reserve the cap slot BEFORE streaming: a null reservation means
+    // over cap (graceful degrade — score already rendered), and a reserved slot
+    // can't be double-spent by concurrent requests (per-user advisory lock in
+    // reserveAiCallIfUnderCap). Real token counts are filled by finalizeAiCall
+    // when the stream completes.
+    const callId = await reserveAiCallIfUnderCap({
       userId: user.id,
       predictionId: row.id,
       purpose: "postmortem",
       model: HAIKU_MODEL,
     });
+    if (callId === null) return textResponse(OVER_CAP_MESSAGE);
 
     // Adapt the Anthropic SDK stream to the SDK-agnostic ModelStream the pure
     // consumer expects — text deltas as `chunks`, finalMessage() usage as `usage`.
@@ -149,7 +149,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
               .set({ postmortem: full })
               .where(and(eq(schema.predictions.id, row.id), eq(schema.predictions.userId, user.id)))
               .then(() => undefined),
-          finalize: (result) => finalizeAiCall(callId, result),
+          finalize: (result) => finalizeAiCall(callId, user.id, result),
         });
         controller.close();
       },

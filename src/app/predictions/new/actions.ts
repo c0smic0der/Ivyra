@@ -68,12 +68,20 @@ export async function createPrediction(
   // though we redirect below) — no cookies/session needed here, since we
   // already have userId/predictionId in closure and hit Drizzle directly.
   after(async () => {
-    await enrichPrediction({
-      userId: user.id,
-      predictionId,
-      text: input.text,
-      reasoning: input.reasoning || null,
-    });
+    // enrichPrediction degrades internally, but the cap reservation is a DB
+    // transaction that could throw (e.g. connection loss). Contain it here so a
+    // failure is a logged no-op, never an unhandled post-response rejection —
+    // the prediction row is already saved and fully usable without enrichment.
+    try {
+      await enrichPrediction({
+        userId: user.id,
+        predictionId,
+        text: input.text,
+        reasoning: input.reasoning || null,
+      });
+    } catch (error) {
+      console.error("createPrediction: enrichment failed", error instanceof Error ? error.name : "UnknownError");
+    }
   });
 
   // OUTSIDE the try: Next implements redirect() by throwing a special error —

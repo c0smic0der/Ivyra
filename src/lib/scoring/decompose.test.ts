@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   boldness,
+  boldnessRatio,
   brierScore,
   bucketIndex,
   calibrationBuckets,
@@ -221,6 +222,27 @@ describe("boldness (resolution / uncertainty, gated + guarded)", () => {
 
   it("returns null when there is nothing resolved", () => {
     expect(boldness([])).toBeNull();
+  });
+
+  // The profile path (scopedInsightView) calls the UNGATED boldnessRatio so it
+  // works over the Recent scope's ~20 rows. These two functions share one math
+  // implementation and must never drift — a drift would flip the profile's
+  // coaching between "commit harder" and "shift your numbers down".
+  it("boldness() and boldnessRatio() agree exactly on the same input above the gate", () => {
+    expect(resolvedNonVoid(FIXTURE_40).length).toBeGreaterThanOrEqual(CURVE_UNLOCK_N);
+    expect(boldness(FIXTURE_40)).toBe(boldnessRatio(FIXTURE_40));
+  });
+
+  it("boldnessRatio() is ungated: returns a value below the gate where boldness() is null", () => {
+    const justUnder = Array.from({ length: CURVE_UNLOCK_N - 1 }, (_, i) => p(0.9, i % 3 !== 0));
+    expect(resolvedNonVoid(justUnder)).toHaveLength(CURVE_UNLOCK_N - 1);
+    expect(boldness(justUnder)).toBeNull(); // gated off
+    expect(boldnessRatio(justUnder)).not.toBeNull(); // same math, no gate
+  });
+
+  it("boldnessRatio() still guards divide-by-zero (all-YES → null)", () => {
+    const allYes = Array.from({ length: CURVE_UNLOCK_N - 1 }, () => p(0.8, true));
+    expect(boldnessRatio(allYes)).toBeNull();
   });
 });
 

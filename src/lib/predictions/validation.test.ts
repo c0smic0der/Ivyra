@@ -60,16 +60,16 @@ describe("validateCreatePredictionInput — confidence bounds", () => {
   });
 });
 
-describe("validateCreatePredictionInput — resolution date must be in the future", () => {
+describe("validateCreatePredictionInput — resolution date can’t be in the past", () => {
   it("rejects yesterday", () => {
     const r = validateCreatePredictionInput({ ...validBase, resolutionDate: yesterday() });
     expect(r.success).toBe(false);
     expect(r.fieldErrors?.resolutionDate).toBeTruthy();
   });
 
-  it("rejects today", () => {
+  it("accepts today (same-day predictions are allowed — product decision)", () => {
     const r = validateCreatePredictionInput({ ...validBase, resolutionDate: today() });
-    expect(r.success).toBe(false);
+    expect(r.success).toBe(true);
   });
 
   it("accepts tomorrow", () => {

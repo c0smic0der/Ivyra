@@ -35,6 +35,11 @@ where user-facing) · Vercel (+ Cron) · Resend · Recharts
 - The post-mortem is a diff engine, not a therapist: every claim must anchor to
   text the user wrote. No motive speculation.
 - Resolution criteria and reasoning FREEZE at creation. Never editable after.
+- When two code paths must agree on a value or threshold, one MUST derive from
+  the other — never rely on separate constants/formulas happening to be equal.
+  (Hit three times: `resolvedNonVoid` vs an inline gate; `PROFILE_UNLOCK_N` vs
+  `CATEGORY_UNLOCK_N`; `boldness()` vs `profileBoldness` — now one `boldnessRatio`
+  with two gating policies.)
 - Privacy: RLS on all user tables; prediction content never in URLs or logs;
   API keys server-side only.
 - Write tests for scoring logic and server actions. Run `npm test` before

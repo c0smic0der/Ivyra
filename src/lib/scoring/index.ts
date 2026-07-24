@@ -385,21 +385,32 @@ export function decompose(preds: Scorable[]): Decomposition | null {
 }
 
 /**
- * Boldness: `resolution / uncertainty`, clamped to [0, 1] — a user-facing 0–1
- * stat catching the honest-but-timid 50%-hugger the calibration curve alone
- * congratulates (their resolution ≈ 0). `resolution ≤ uncertainty` always holds
- * mathematically, so the clamp only guards float drift at the edges.
- *
- * Gated behind the *same* sample threshold as the calibration curve
- * (`CURVE_UNLOCK_N`) — resolution is noisier than reliability at low N, same
- * gate, no exceptions. The division is guarded when `uncertainty === 0`
- * (`b̄ ∈ {0, 1}`, an all-YES or all-NO history): `null`, never Infinity or NaN.
+ * The raw boldness ratio: `resolution / uncertainty`, clamped to [0, 1], with NO
+ * sample-size gate. This is the ONE implementation of the boldness math — the
+ * two public entry points differ ONLY in gating policy (see boldness() below and
+ * scopedInsightView's profile path, which calls this directly because the
+ * profile must be assignable over the Recent scope's ~20 rows, below
+ * `CURVE_UNLOCK_N`). `resolution ≤ uncertainty` always holds mathematically, so
+ * the clamp only guards float drift at the edges. The division is guarded when
+ * `uncertainty === 0` (`b̄ ∈ {0, 1}`, an all-YES or all-NO history): `null`,
+ * never Infinity or NaN.
  */
-export function boldness(preds: Scorable[]): number | null {
-  if (resolvedNonVoid(preds).length < CURVE_UNLOCK_N) return null;
+export function boldnessRatio(preds: Scorable[]): number | null {
   const d = decompose(preds);
   if (d === null || d.uncertainty === 0) return null;
   return Math.min(1, Math.max(0, d.resolution / d.uncertainty));
+}
+
+/**
+ * Boldness: `boldnessRatio` gated behind the *same* sample threshold as the
+ * calibration curve (`CURVE_UNLOCK_N`) — a user-facing 0–1 stat catching the
+ * honest-but-timid 50%-hugger the calibration curve alone congratulates (their
+ * resolution ≈ 0). Resolution is noisier than reliability at low N, so it earns
+ * the same gate, no exceptions; below it → `null`.
+ */
+export function boldness(preds: Scorable[]): number | null {
+  if (resolvedNonVoid(preds).length < CURVE_UNLOCK_N) return null;
+  return boldnessRatio(preds);
 }
 
 // --- profile classification (code-assigned, never by the LLM) --------------

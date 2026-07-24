@@ -4,10 +4,9 @@ import {
   dueDateString,
   groupDueByUser,
   isAuthorized,
-  notYetReminded,
   type DuePrediction,
 } from "@/lib/reminders/remindersCore";
-import { findPredictionsDueToday, markReminded } from "@/lib/reminders/query";
+import { claimDueReminders, releaseReminders } from "@/lib/reminders/query";
 import { getUserEmail } from "@/lib/supabase/admin";
 
 // Secret-guarded cron/webhook route (the sanctioned exception to Server
@@ -48,10 +47,14 @@ export async function GET(request: Request) {
   let dueRows: DuePrediction[];
   let siteUrl: string;
   try {
-    dueRows = notYetReminded(await findPredictionsDueToday(dueDateString(new Date())));
+    // Resolve config BEFORE claiming: `claimDueReminders` marks rows reminded, so
+    // a prod misconfig (SITE_URL unset) must fail here — before any row is
+    // claimed — rather than after, which would mark rows reminded and then throw,
+    // silently dropping today's reminders.
     siteUrl = resolveSiteUrl();
+    dueRows = await claimDueReminders(dueDateString(new Date()));
   } catch (error) {
-    // Top-level fetch / config failure (DB down, SITE_URL unset in prod). Log
+    // Top-level claim / config failure (DB down, SITE_URL unset in prod). Log
     // the class name only (privacy) and fail the run with a 500 — the per-user
     // send loop below is already individually guarded.
     const kind = error instanceof Error ? error.name : "UnknownError";
@@ -67,18 +70,24 @@ export async function GET(request: Request) {
     try {
       const email = await getUserEmail(userId);
       if (!email) {
-        // No identifying info logged — see remindersCore's notYetReminded
-        // doc comment for why this route treats user identity as sensitive.
+        // No identifying info logged — see query.ts for why this route treats
+        // user identity as sensitive. The row stays claimed (marked reminded):
+        // its resolution_date won't match "today" on a later run anyway, so
+        // there is nothing to retry.
         console.error("reminders: no email found for a due user");
         continue;
       }
       const { subject, text } = buildReminderEmail(predictions, siteUrl);
       await resend.emails.send({ from: REMINDER_FROM_ADDRESS, to: email, subject, text });
       usersEmailed += 1;
-      // Marked only after a confirmed send. If this write fails, the worst
-      // case is a duplicate email on the next run, not a skipped one.
-      await markReminded(predictions.map((p) => p.id));
     } catch (error) {
+      // Send threw AFTER we claimed these rows. Release the claim so a later run
+      // can retry — this run holds them exclusively (SKIP LOCKED), so releasing
+      // can't collide with a concurrent run. This is at-least-once: if the send
+      // actually delivered before throwing, the retry may duplicate — an
+      // accepted trade over silently dropping the reminder (see releaseReminders).
+      // Best-effort: if the release itself fails, the reminder just isn't retried.
+      await releaseReminders(predictions.map((p) => p.id)).catch(() => {});
       // Log an error class name only — never the raw error object or its
       // message, which can echo the recipient address or request payload
       // (CLAUDE.md: prediction content never in logs; no user-identifying
