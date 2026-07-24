@@ -2,12 +2,23 @@ import { and, asc, eq, inArray } from "drizzle-orm";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { db, schema } from "@/db";
+import { countAiCallsToday } from "@/lib/ai/enrich";
+import { isValidScope, type InsightScope } from "@/lib/ai/scopedInsightCore";
 import {
   buildInsightsViewModel,
   type BiasBreakdownRow,
   type InsightsInput,
   type InsightsViewModel,
 } from "@/lib/insights/insightsCore";
+import {
+  buildScopedInsightCard,
+  buildScopeStats,
+  categoryMenu,
+  type CachedInsight,
+  type CategoryMenuItem,
+  type InsightCardModel,
+  type InsightPrediction,
+} from "@/lib/insights/scopedInsightView";
 import { HISTORY_CATEGORIES, type HistoryItem } from "@/lib/insights/historyView";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardLabel } from "@/components/ui/Card";
@@ -16,6 +27,7 @@ import { CalibrationChart } from "./CalibrationChart";
 import { InsightsSelectionProvider } from "./InsightsSelection";
 import { ProgressChart } from "./ProgressChart";
 import { ResolutionHistory } from "./ResolutionHistory";
+import { ScopedInsight } from "./ScopedInsight";
 
 function LockStateCard({ sentence }: { sentence: string }) {
   return (
@@ -119,7 +131,64 @@ export default async function InsightsPage() {
     reasoningType: row.reasoningType,
   }));
 
-  const vm = buildInsightsViewModel(inputs, new Date());
+  const vm = buildInsightsViewModel(inputs);
+
+  // The scoped AI insight (replaces v1's templated monthly summary). Read
+  // whatever is cached for each scope, then decide each card deterministically —
+  // which text to show, whether it's out of date, whether a Generate/Regenerate
+  // action is offered. Nothing here calls the model; generation is on demand via
+  // the client action, so a page load never spends a Haiku call or the cap.
+  const insightPreds: InsightPrediction[] = rows.map((row) => ({
+    confidence: Number(row.confidence),
+    outcome: row.outcome,
+    status: row.status,
+    category: row.category,
+    reasoningType: row.reasoningType,
+    text: row.text,
+    reasoning: row.reasoning,
+    outcomeNote: row.outcomeNote,
+  }));
+
+  // Recent + Lifetime always; a category scope only once it clears the noise
+  // floor. The full category menu (every category with its progress) goes to the
+  // client as a dropdown, so locked ones are discoverable/disabled, not hidden.
+  const catMenu: CategoryMenuItem[] = categoryMenu(insightPreds);
+  const scopes: InsightScope[] = [
+    "recent",
+    "lifetime",
+    ...catMenu.filter((o) => o.unlocked).map((o) => o.scope),
+  ];
+
+  const cachedRows = await db
+    .select({
+      scope: schema.insights.scope,
+      bodyText: schema.insights.bodyText,
+      nResolvedAtGeneration: schema.insights.nResolvedAtGeneration,
+      promptVersion: schema.insights.promptVersion,
+    })
+    .from(schema.insights)
+    .where(eq(schema.insights.userId, user.id));
+
+  const cachedByScope = new Map<string, CachedInsight>();
+  for (const r of cachedRows) {
+    if (isValidScope(r.scope)) {
+      cachedByScope.set(r.scope, {
+        scope: r.scope,
+        bodyText: r.bodyText,
+        nResolvedAtGeneration: r.nResolvedAtGeneration,
+        promptVersion: r.promptVersion,
+      });
+    }
+  }
+
+  const callsToday = await countAiCallsToday(user.id);
+  const insightCards: InsightCardModel[] = scopes.map((scope) =>
+    buildScopedInsightCard(
+      buildScopeStats(insightPreds, scope),
+      cachedByScope.get(scope) ?? null,
+      callsToday,
+    ),
+  );
 
   const historyItems: HistoryItem[] = rows.map((row) => ({
     id: row.id,
@@ -201,16 +270,15 @@ export default async function InsightsPage() {
                   <BoldnessGauge boldness={vm.boldness} />
                 </Card>
 
-                {vm.bias.unlocked &&
-                  (vm.bias.byCategory.length > 0 || vm.bias.byReasoningType.length > 0) && (
-                    <Card>
-                      <CardLabel>Bias breakdown</CardLabel>
-                      <div className="grid grid-cols-1 gap-x-8 sm:grid-cols-2">
-                        <BreakdownTable title="By category" rows={vm.bias.byCategory} />
-                        <BreakdownTable title="By reasoning type" rows={vm.bias.byReasoningType} />
-                      </div>
-                    </Card>
-                  )}
+                {/* Bias broken down by category only. The reasoning-type split
+                    stays internal — it powers the AI insight's analysis but its
+                    taxonomy is never shown to the user (no vocabulary to learn). */}
+                {vm.bias.unlocked && vm.bias.byCategory.length > 0 && (
+                  <Card>
+                    <CardLabel>Bias breakdown</CardLabel>
+                    <BreakdownTable title="By category" rows={vm.bias.byCategory} />
+                  </Card>
+                )}
 
                 <Card>
                   <CardLabel>Calibration curve</CardLabel>
@@ -240,8 +308,7 @@ export default async function InsightsPage() {
                 </Card>
 
                 <Card>
-                  <CardLabel>{vm.monthlySummary.periodLabel}</CardLabel>
-                  <p className="mt-2 text-sm text-ink-secondary">{vm.monthlySummary.paragraph}</p>
+                  <ScopedInsight cards={insightCards} categoryMenu={catMenu} />
                 </Card>
               </div>
 

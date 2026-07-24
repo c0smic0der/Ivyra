@@ -8,6 +8,7 @@ import {
   pgTable,
   text,
   timestamp,
+  unique,
   uuid,
   vector,
 } from "drizzle-orm/pg-core";
@@ -66,16 +67,32 @@ export const aiCalls = pgTable("ai_calls", {
 });
 
 // insights ------------------------------------------------------------------
-export const insights = pgTable("insights", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  userId: uuid("user_id").notNull(),
-  period: text("period").notNull(),
-  bodyText: text("body_text").notNull(),
-  statsJson: jsonb("stats_json"),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
+// One cached AI insight per (user, scope). Generated on demand, never on a
+// schedule. `nResolvedAtGeneration` is the resolved-non-void count the body was
+// written against, so the page can mark a cached insight out of date the moment
+// a new resolution lands (see scopedInsightView.insightFreshness).
+export const insights = pgTable(
+  "insights",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    // 'recent' (the last ROLLING_WINDOW resolutions) | 'lifetime' (all resolved)
+    // | 'category:<category>'.
+    scope: text("scope").notNull(),
+    nResolvedAtGeneration: integer("n_resolved_at_generation").notNull(),
+    // The SCOPED_INSIGHT_PROMPT_VERSION the body was generated under. A cached
+    // insight behind the current code version is treated as stale so prompt
+    // improvements reach existing users. Defaults to 0 (the pre-versioning
+    // contract) so rows created before this column existed read as stale.
+    promptVersion: integer("prompt_version").notNull().default(0),
+    bodyText: text("body_text").notNull(),
+    statsJson: jsonb("stats_json"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [unique("insights_user_scope_unique").on(table.userId, table.scope)],
+);
 
 // base_rates ----------------------------------------------------------------
 // Global reference data (not user-scoped).

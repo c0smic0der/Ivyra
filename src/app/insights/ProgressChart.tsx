@@ -41,7 +41,7 @@ function ProgressTooltip({
       <p className="font-medium text-ink line-clamp-2">{point.text}</p>
       <p className="mt-0.5 text-ink-tertiary">This one scored {point.brier.toFixed(2)}</p>
       <p className="mt-0.5 text-ink-tertiary">
-        Recent form {point.value.toFixed(2)} · lifetime {point.lifetime.toFixed(2)}
+        Recent {point.value.toFixed(2)} · lifetime {point.lifetime.toFixed(2)}
       </p>
     </div>
   );

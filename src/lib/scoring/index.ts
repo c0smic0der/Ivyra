@@ -51,6 +51,14 @@ export const CURVE_UNLOCK_N = 30;
 /** Resolutions needed before the rolling-Brier progress chart unlocks (insights). */
 export const PROGRESS_UNLOCK_N = 25;
 
+/**
+ * The trailing window "recent form" is measured over — shared by `rollingBrier`
+ * and the scoped-insight's Recent scope, so the progress chart and the insight
+ * always describe the *same* slice of history. A single constant is the only way
+ * to guarantee they can never drift apart.
+ */
+export const ROLLING_WINDOW = 20;
+
 const NUM_BUCKETS = 10;
 
 // --- internals -------------------------------------------------------------
@@ -118,7 +126,7 @@ export function runningBrier(preds: Scorable[]): number | null {
  * gotten better. Input order is treated as chronological; the tail is taken.
  * `null` if there are no resolutions.
  */
-export function rollingBrier(preds: Scorable[], window = 20): number | null {
+export function rollingBrier(preds: Scorable[], window = ROLLING_WINDOW): number | null {
   const resolved = resolvedNonVoid(preds);
   if (resolved.length === 0) return null;
   const recent = resolved.slice(-window);
@@ -219,6 +227,55 @@ export function biasByGroup<T extends Scorable>(
     const bias = biasScore(group);
     if (bias === null) continue;
     rows.push({ key, n: resolvedNonVoid(group).length, bias });
+  }
+  return rows.sort((a, b) => b.n - a.n);
+}
+
+/** Per-group calibration stats — the row shape the scoped-insight tables consume. */
+export interface GroupCalibration {
+  key: string;
+  /** Resolved, non-void count backing every figure in this row. */
+  n: number;
+  /** Count of YES outcomes in the group — the numerator behind `hitRate` (lets the insight say "4 of 13", not a bare "31%"). */
+  hits: number;
+  /** Mean stated confidence of the group. */
+  meanConfidence: number;
+  /** Observed YES frequency (hit rate) of the group. */
+  hitRate: number;
+  /** `meanConfidence − hitRate` — positive ⇒ overconfident in this group. */
+  bias: number;
+}
+
+/**
+ * Calibration stats computed separately per group (e.g. by `category`, by
+ * `reasoning_type`). Richer than `biasByGroup` — it also carries each group's
+ * hit rate and mean confidence, so the scoped insight can name a pattern like
+ * "evidence-justified predictions hit 72%, plan-optimism ones 31%" from figures
+ * the deterministic engine produced (the LLM never computes them). Same
+ * population rules as `biasByGroup`: null keys excluded, `n` is the group's
+ * resolved-non-void count, empty groups dropped, sorted by `n` descending.
+ */
+export function calibrationByGroup<T extends Scorable>(
+  preds: T[],
+  keyFn: (pred: T) => string | null,
+): GroupCalibration[] {
+  const groups = new Map<string, T[]>();
+  for (const pred of preds) {
+    const key = keyFn(pred);
+    if (key === null) continue;
+    const group = groups.get(key);
+    if (group) group.push(pred);
+    else groups.set(key, [pred]);
+  }
+
+  const rows: GroupCalibration[] = [];
+  for (const [key, group] of groups) {
+    const resolved = resolvedNonVoid(group);
+    if (resolved.length === 0) continue;
+    const hits = resolved.filter((p) => p.outcome).length;
+    const meanConfidence = mean(resolved.map((p) => p.confidence));
+    const hitRate = hits / resolved.length;
+    rows.push({ key, n: resolved.length, hits, meanConfidence, hitRate, bias: meanConfidence - hitRate });
   }
   return rows.sort((a, b) => b.n - a.n);
 }
@@ -343,6 +400,67 @@ export function boldness(preds: Scorable[]): number | null {
   const d = decompose(preds);
   if (d === null || d.uncertainty === 0) return null;
   return Math.min(1, Math.max(0, d.resolution / d.uncertainty));
+}
+
+// --- profile classification (code-assigned, never by the LLM) --------------
+
+/**
+ * The code-assigned forecasting profile that drives the scoped AI insight's
+ * *correction* (docs §9.4). The label is decided HERE, deterministically — the
+ * LLM only narrates it, never picks it. The same Brier can yield opposite
+ * coaching depending on which of these applies, which is the whole point.
+ */
+export type Profile = "hedger" | "miscalibrated" | "calibrated_and_bold" | "insufficient_data";
+
+/**
+ * Resolutions required in the scope before a profile is assigned. Deliberately
+ * lower than `CURVE_UNLOCK_N`: the profile must be assignable over the Recent
+ * scope (a `ROLLING_WINDOW`-sized slice), and it reads meaningfully from the
+ * same ~10-resolution floor as the bias-score headline.
+ */
+export const PROFILE_UNLOCK_N = 10;
+
+/**
+ * Reliability at or above this reads as "miscalibrated" — the size-weighted mean
+ * squared gap between stated confidence and hit rate. `0.03 ≈ (0.17)²`, i.e. the
+ * user's confidence is systematically off by ~17 points; below it, calibration
+ * is treated as healthy. A heuristic band, not a theorem — kept as a named
+ * constant so the classifier and its tests share one definition.
+ */
+export const PROFILE_RELIABILITY_HIGH = 0.03;
+
+/**
+ * Boldness (resolution ÷ uncertainty, 0–1) below this reads as "timid" — the
+ * user's confidence levels barely sort outcomes. Matches `BOLDNESS_LOW`, the
+ * point the boldness *sentence* also flips to "hedging near 50/50", so the
+ * gauge and the profile can never disagree about who is a hedger.
+ */
+export const PROFILE_BOLDNESS_MIN = 0.15;
+
+/**
+ * The deterministic profile from a scope's aggregate stats. Order matters:
+ * miscalibrated (high reliability) is decided first, since a user whose numbers
+ * don't match reality needs the "shift high-confidence calls down" correction
+ * regardless of how boldly they bet. Only among the well-calibrated does the
+ * boldness split separate the timid hedger from the calibrated-and-bold.
+ *
+ * `insufficient_data` covers too few resolutions OR a scope with no readable
+ * reliability/boldness (nothing resolved, or every outcome the same way so there
+ * is nothing to sort) — a null on either input is honest "can't say yet", never
+ * a silently-wrong label. `boldness` here is the ungated resolution ratio the
+ * caller computes over the scope (see `boldness()` for the user-facing gated one).
+ */
+export function classifyProfile(stats: {
+  n: number;
+  reliability: number | null;
+  boldness: number | null;
+}): Profile {
+  if (stats.n < PROFILE_UNLOCK_N || stats.reliability === null || stats.boldness === null) {
+    return "insufficient_data";
+  }
+  if (stats.reliability >= PROFILE_RELIABILITY_HIGH) return "miscalibrated";
+  if (stats.boldness < PROFILE_BOLDNESS_MIN) return "hedger";
+  return "calibrated_and_bold";
 }
 
 // --- directional sentences (deterministic templates, no AI) ----------------

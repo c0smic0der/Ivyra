@@ -67,7 +67,7 @@ export default async function DashboardPage() {
     reasoningType: row.reasoningType,
   }));
 
-  const vm = buildInsightsViewModel(insightsInputs, new Date());
+  const vm = buildInsightsViewModel(insightsInputs);
 
   return (
     <>

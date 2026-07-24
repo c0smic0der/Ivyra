@@ -106,8 +106,10 @@ export interface InsightsViewModel {
     unlockSentence: string | null;
     value: number | null;
     sentence: string | null;
+    // By category only. The reasoning-type breakdown is intentionally NOT
+    // surfaced — its taxonomy is internal (it drives the AI insight); the user
+    // never sees a coined reasoning-style label.
     byCategory: BiasBreakdownRow[];
-    byReasoningType: BiasBreakdownRow[];
   };
 
   curve: {
@@ -144,12 +146,6 @@ export interface InsightsViewModel {
   runningBrier: {
     value: number | null;
     sentence: string | null;
-  };
-
-  monthlySummary: {
-    periodLabel: string;
-    resolvedThisMonth: number;
-    paragraph: string;
   };
 }
 
@@ -232,50 +228,12 @@ function buildProgressPoints(
   });
 }
 
-/** Start of `date`'s UTC calendar month, and the start of the following one. */
-function utcMonthBounds(date: Date): { start: Date; end: Date } {
-  const start = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
-  const end = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1));
-  return { start, end };
-}
+// The scoped AI insight (docs §9.4) replaces v1's templated monthly summary: it
+// lives in its own module (scopedInsightView.ts), is generated on demand rather
+// than computed on every render, and its deterministic fallback is scope-based,
+// not month-based — so no month recap is assembled here any more.
 
-/**
- * Templated recap of the current UTC calendar month — the v1 stand-in for the
- * v2 batched-Haiku monthly insight (docs §9.4). Computed live on every render
- * from the same predictions as the rest of the page; does not touch the
- * `insights` table or a cron, which are provisioned for that later feature.
- * When the AI version ships, it should reuse this same month-filter + stat
- * computation and only swap the templating step for an LLM call.
- */
-function buildMonthlySummary(
-  preds: InsightsInput[],
-  now: Date,
-): InsightsViewModel["monthlySummary"] {
-  const periodLabel = now.toLocaleString("en-US", {
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-
-  const { start, end } = utcMonthBounds(now);
-  const monthRows = resolvedNonVoid(preds).filter(
-    (p) => p.resolvedAt >= start && p.resolvedAt < end,
-  );
-
-  if (monthRows.length === 0) {
-    return { periodLabel, resolvedThisMonth: 0, paragraph: "No resolutions yet this month." };
-  }
-
-  const brier = runningBrier(monthRows)!;
-  const bias = biasScore(monthRows)!;
-  return {
-    periodLabel,
-    resolvedThisMonth: monthRows.length,
-    paragraph: `${brierSentence(brier)} ${biasSentence(bias)}`,
-  };
-}
-
-export function buildInsightsViewModel(preds: InsightsInput[], now: Date): InsightsViewModel {
+export function buildInsightsViewModel(preds: InsightsInput[]): InsightsViewModel {
   const resolved = resolvedNonVoid(preds);
   const n = resolved.length;
 
@@ -314,7 +272,6 @@ export function buildInsightsViewModel(preds: InsightsInput[], now: Date): Insig
       value: biasValue,
       sentence: biasValue === null ? null : biasSentence(biasValue),
       byCategory: toBreakdownRows(biasByGroup(resolved, (p) => p.category)),
-      byReasoningType: toBreakdownRows(biasByGroup(resolved, (p) => p.reasoningType)),
     },
 
     curve: {
@@ -347,7 +304,5 @@ export function buildInsightsViewModel(preds: InsightsInput[], now: Date): Insig
       value: runningValue,
       sentence: runningValue === null ? null : brierSentence(runningValue),
     },
-
-    monthlySummary: buildMonthlySummary(preds, now),
   };
 }

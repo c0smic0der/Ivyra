@@ -26,6 +26,7 @@ export type AiCallPurpose =
   | "enrich"
   | "enrich_embed"
   | "postmortem"
+  | "scoped_insight"
   | "monthly_insight"
   | "reference_class"
   | "track_record_embed"

@@ -5,7 +5,6 @@ import {
   boldness,
   boldnessSentence,
   brierScore,
-  brierSentence,
   biasSentence,
   calibrationBuckets,
   CURVE_UNLOCK_N,
@@ -39,51 +38,49 @@ function resolvedFixture(n: number): InsightsInput[] {
   return Array.from({ length: n }, (_, i) => resolvedInput(i));
 }
 
-const NOW = new Date(Date.UTC(2026, 0, 15)); // mid-January 2026, inside the fixtures' month
-
 describe("buildInsightsViewModel — lock-state thresholds", () => {
   it("bias unlocks exactly at BIAS_UNLOCK_N (9 locked, 10 unlocked)", () => {
-    expect(buildInsightsViewModel(resolvedFixture(BIAS_UNLOCK_N - 1), NOW).bias.unlocked).toBe(false);
-    expect(buildInsightsViewModel(resolvedFixture(BIAS_UNLOCK_N), NOW).bias.unlocked).toBe(true);
+    expect(buildInsightsViewModel(resolvedFixture(BIAS_UNLOCK_N - 1)).bias.unlocked).toBe(false);
+    expect(buildInsightsViewModel(resolvedFixture(BIAS_UNLOCK_N)).bias.unlocked).toBe(true);
   });
 
   it("progress unlocks exactly at PROGRESS_UNLOCK_N (24 locked, 25 unlocked)", () => {
     expect(
-      buildInsightsViewModel(resolvedFixture(PROGRESS_UNLOCK_N - 1), NOW).progress.unlocked,
+      buildInsightsViewModel(resolvedFixture(PROGRESS_UNLOCK_N - 1)).progress.unlocked,
     ).toBe(false);
-    expect(buildInsightsViewModel(resolvedFixture(PROGRESS_UNLOCK_N), NOW).progress.unlocked).toBe(
+    expect(buildInsightsViewModel(resolvedFixture(PROGRESS_UNLOCK_N)).progress.unlocked).toBe(
       true,
     );
   });
 
   it("curve unlocks exactly at CURVE_UNLOCK_N (29 locked, 30 unlocked)", () => {
-    expect(buildInsightsViewModel(resolvedFixture(CURVE_UNLOCK_N - 1), NOW).curve.unlocked).toBe(
+    expect(buildInsightsViewModel(resolvedFixture(CURVE_UNLOCK_N - 1)).curve.unlocked).toBe(
       false,
     );
-    expect(buildInsightsViewModel(resolvedFixture(CURVE_UNLOCK_N), NOW).curve.unlocked).toBe(true);
+    expect(buildInsightsViewModel(resolvedFixture(CURVE_UNLOCK_N)).curve.unlocked).toBe(true);
   });
 
   it("boldness rides the curve's gate — unlocks exactly at CURVE_UNLOCK_N (29 locked, 30 unlocked)", () => {
-    expect(buildInsightsViewModel(resolvedFixture(CURVE_UNLOCK_N - 1), NOW).boldness.unlocked).toBe(
+    expect(buildInsightsViewModel(resolvedFixture(CURVE_UNLOCK_N - 1)).boldness.unlocked).toBe(
       false,
     );
-    expect(buildInsightsViewModel(resolvedFixture(CURVE_UNLOCK_N), NOW).boldness.unlocked).toBe(
+    expect(buildInsightsViewModel(resolvedFixture(CURVE_UNLOCK_N)).boldness.unlocked).toBe(
       true,
     );
   });
 
   it("boldness locks and unlocks in lockstep with the curve at every N", () => {
     for (const count of [0, 12, 25, 29, 30, 40]) {
-      const vm = buildInsightsViewModel(resolvedFixture(count), NOW);
+      const vm = buildInsightsViewModel(resolvedFixture(count));
       expect(vm.boldness.unlocked).toBe(vm.curve.unlocked);
     }
   });
 
   it("locked boldness reports how many more resolutions are needed", () => {
-    expect(buildInsightsViewModel(resolvedFixture(0), NOW).boldness.unlockSentence).toBe(
+    expect(buildInsightsViewModel(resolvedFixture(0)).boldness.unlockSentence).toBe(
       "30 more resolutions before this is meaningful.",
     );
-    expect(buildInsightsViewModel(resolvedFixture(29), NOW).boldness.unlockSentence).toBe(
+    expect(buildInsightsViewModel(resolvedFixture(29)).boldness.unlockSentence).toBe(
       "1 more resolution before this is meaningful.",
     );
   });
@@ -95,7 +92,7 @@ describe("buildInsightsViewModel — lock-state thresholds", () => {
     const allYes = Array.from({ length: CURVE_UNLOCK_N }, (_, i) =>
       resolvedInput(i, { outcome: true }),
     );
-    const vm = buildInsightsViewModel(allYes, NOW);
+    const vm = buildInsightsViewModel(allYes);
     expect(vm.boldness.unlocked).toBe(true);
     expect(vm.boldness.unlockSentence).toBeNull();
     expect(vm.boldness.value).toBeNull();
@@ -106,7 +103,7 @@ describe("buildInsightsViewModel — lock-state thresholds", () => {
   });
 
   it("the three gates are independent — n=15 unlocks bias only", () => {
-    const vm = buildInsightsViewModel(resolvedFixture(15), NOW);
+    const vm = buildInsightsViewModel(resolvedFixture(15));
     expect(vm.bias.unlocked).toBe(true);
     expect(vm.progress.unlocked).toBe(false);
     expect(vm.curve.unlocked).toBe(false);
@@ -115,7 +112,7 @@ describe("buildInsightsViewModel — lock-state thresholds", () => {
   });
 
   it("n=30 unlocks all three simultaneously", () => {
-    const vm = buildInsightsViewModel(resolvedFixture(30), NOW);
+    const vm = buildInsightsViewModel(resolvedFixture(30));
     expect(vm.bias.unlocked).toBe(true);
     expect(vm.progress.unlocked).toBe(true);
     expect(vm.curve.unlocked).toBe(true);
@@ -124,7 +121,7 @@ describe("buildInsightsViewModel — lock-state thresholds", () => {
 
 describe("buildInsightsViewModel — 0 resolutions", () => {
   it("is fully locked with null/empty stats and no NaN anywhere", () => {
-    const vm = buildInsightsViewModel([], NOW);
+    const vm = buildInsightsViewModel([]);
 
     expect(vm.n).toBe(0);
 
@@ -133,7 +130,6 @@ describe("buildInsightsViewModel — 0 resolutions", () => {
     expect(vm.bias.value).toBeNull();
     expect(vm.bias.sentence).toBeNull();
     expect(vm.bias.byCategory).toEqual([]);
-    expect(vm.bias.byReasoningType).toEqual([]);
 
     expect(vm.curve.unlocked).toBe(false);
     expect(vm.curve.unlockSentence).toBe("0 of 30 resolutions until your curve unlocks.");
@@ -153,9 +149,6 @@ describe("buildInsightsViewModel — 0 resolutions", () => {
     expect(vm.runningBrier.value).toBeNull();
     expect(vm.runningBrier.sentence).toBeNull();
 
-    expect(vm.monthlySummary.resolvedThisMonth).toBe(0);
-    expect(vm.monthlySummary.paragraph).toBe("No resolutions yet this month.");
-
     expect(JSON.stringify(vm)).not.toMatch(/NaN/);
   });
 
@@ -164,7 +157,7 @@ describe("buildInsightsViewModel — 0 resolutions", () => {
       resolvedInput(0, { status: "void", outcome: null }),
       resolvedInput(1, { status: "open", outcome: null }),
     ];
-    expect(buildInsightsViewModel(preds, NOW).n).toBe(0);
+    expect(buildInsightsViewModel(preds).n).toBe(0);
   });
 });
 
@@ -174,7 +167,7 @@ describe("buildInsightsViewModel — 12 resolutions", () => {
     resolvedInput(100, { status: "void", outcome: null }),
     resolvedInput(101, { status: "open", outcome: null }),
   ];
-  const vm = buildInsightsViewModel(preds, NOW);
+  const vm = buildInsightsViewModel(preds);
 
   it("gates survive the full pipeline: void/open don't inflate n", () => {
     expect(vm.n).toBe(12);
@@ -201,18 +194,20 @@ describe("buildInsightsViewModel — 12 resolutions", () => {
     expect(vm.boldness.sentence).toBeNull();
   });
 
-  it("breakdown row counts sum to the resolved-non-void population", () => {
+  it("category breakdown row counts sum to the resolved-non-void population", () => {
     const total = resolvedNonVoid(preds).length;
     expect(vm.bias.byCategory.reduce((sum, r) => sum + r.n, 0)).toBe(total);
-    expect(vm.bias.byReasoningType.reduce((sum, r) => sum + r.n, 0)).toBe(total);
     expect(vm.bias.byCategory.length).toBeGreaterThanOrEqual(2);
-    expect(vm.bias.byReasoningType.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("does not expose a reasoning-type breakdown (its taxonomy stays internal)", () => {
+    expect((vm.bias as Record<string, unknown>).byReasoningType).toBeUndefined();
   });
 });
 
 describe("buildInsightsViewModel — 40 resolutions", () => {
   const preds = resolvedFixture(40);
-  const vm = buildInsightsViewModel(preds, NOW);
+  const vm = buildInsightsViewModel(preds);
   const resolved = resolvedNonVoid(preds);
 
   it("all three sections are unlocked", () => {
@@ -308,7 +303,7 @@ describe("buildInsightsViewModel — recent vs lifetime progress series (the cha
   // realistic case. The Recent (EWMA) series and the cumulative lifetime series
   // are what the tab flips between, and moving the whole line/dots is the fix.
   const varied = resolvedFixture(30);
-  const vm = buildInsightsViewModel(varied, NOW);
+  const vm = buildInsightsViewModel(varied);
   const resolved = resolvedNonVoid(varied);
   const trend = vm.progress.trend;
 
@@ -332,59 +327,9 @@ describe("buildInsightsViewModel — recent vs lifetime progress series (the cha
   });
 });
 
-describe("buildInsightsViewModel — monthly summary", () => {
-  it("counts and narrates only the in-month subset, not lifetime", () => {
-    const july = [0, 1, 2, 3, 4].map((i) =>
-      resolvedInput(i, { resolvedAt: new Date(Date.UTC(2026, 6, 10 + i)) }),
-    );
-    const january = [10, 11, 12].map((i) =>
-      resolvedInput(i, { resolvedAt: new Date(Date.UTC(2026, 0, 10 + i)) }),
-    );
-    const preds = [...july, ...january];
-    const now = new Date(Date.UTC(2026, 6, 22));
-
-    const vm = buildInsightsViewModel(preds, now);
-
-    expect(vm.monthlySummary.periodLabel).toBe("July 2026");
-    expect(vm.monthlySummary.resolvedThisMonth).toBe(5);
-
-    const julyResolved = resolvedNonVoid(july);
-    const expectedParagraph = `${brierSentence(runningBrier(julyResolved)!)} ${biasSentence(
-      biasScore(julyResolved)!,
-    )}`;
-    expect(vm.monthlySummary.paragraph).toBe(expectedParagraph);
-
-    // Guard against the paragraph silently matching lifetime stats instead.
-    const lifetimeResolved = resolvedNonVoid(preds);
-    const lifetimeParagraph = `${brierSentence(runningBrier(lifetimeResolved)!)} ${biasSentence(
-      biasScore(lifetimeResolved)!,
-    )}`;
-    expect(vm.monthlySummary.paragraph).not.toBe(lifetimeParagraph);
-  });
-
-  it("falls back gracefully when there's lifetime data but none this month", () => {
-    const january = resolvedFixture(5); // all in January 2026
-    const now = new Date(Date.UTC(2026, 6, 22)); // July 2026 — no overlap
-
-    const vm = buildInsightsViewModel(january, now);
-    expect(vm.monthlySummary.resolvedThisMonth).toBe(0);
-    expect(vm.monthlySummary.paragraph).toBe("No resolutions yet this month.");
-    expect(vm.monthlySummary.periodLabel).toBe("July 2026");
-  });
-});
-
 describe("buildInsightsViewModel — determinism", () => {
-  it("identical (preds, now) produce deep-equal output", () => {
+  it("identical input produces deep-equal output", () => {
     const preds = resolvedFixture(20);
-    expect(buildInsightsViewModel(preds, NOW)).toEqual(buildInsightsViewModel(preds, NOW));
-  });
-
-  it("only monthlySummary changes when `now` moves to a different month", () => {
-    const preds = resolvedFixture(20); // all in January 2026
-    const vmJan = buildInsightsViewModel(preds, NOW);
-    const vmJuly = buildInsightsViewModel(preds, new Date(Date.UTC(2026, 6, 15)));
-
-    expect({ ...vmJan, monthlySummary: null }).toEqual({ ...vmJuly, monthlySummary: null });
-    expect(vmJan.monthlySummary).not.toEqual(vmJuly.monthlySummary);
+    expect(buildInsightsViewModel(preds)).toEqual(buildInsightsViewModel(preds));
   });
 });
