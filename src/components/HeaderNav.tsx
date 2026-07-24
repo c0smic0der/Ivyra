@@ -14,7 +14,7 @@ export function HeaderNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="flex min-w-0 items-center gap-5 overflow-x-auto text-sm">
+    <nav className="flex min-w-0 items-center gap-6 overflow-x-auto text-[15px]">
       {NAV_ITEMS.map((item) => {
         const active = pathname === item.href;
         return (
@@ -23,7 +23,7 @@ export function HeaderNav() {
             href={item.href}
             className={cx(
               "shrink-0 whitespace-nowrap transition-colors",
-              active ? "font-medium text-ink" : "text-ink-secondary hover:text-ink",
+              active ? "font-medium text-accent" : "text-ink-secondary hover:text-ink",
             )}
           >
             {item.label}

@@ -35,8 +35,8 @@ export default async function ResolvePage({ params }: { params: Promise<{ id: st
   return (
     <>
       <Header />
-      <main className="flex flex-1 justify-center p-6">
-        <div className="w-full max-w-2xl">
+      <main className="page-gradient flex flex-1 justify-center px-6 py-8 lg:px-8">
+        <div className="w-full max-w-3xl">
           {/* Frozen prediction — verbatim, never editable. */}
           <Card>
             <p className="text-xl font-medium text-ink">{row.text}</p>

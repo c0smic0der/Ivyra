@@ -85,7 +85,7 @@ export function ScopedInsight({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-sm font-semibold text-ink-secondary">AI Insight</h2>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="inline-flex rounded-lg border border-border p-0.5" role="tablist" aria-label="Insight scope">
+          <div className="inline-flex rounded-lg border border-border p-1" role="tablist" aria-label="Insight scope">
             {primary.map((c) => (
               <button
                 key={c.scope}
@@ -94,7 +94,7 @@ export function ScopedInsight({
                 aria-selected={scope === c.scope}
                 onClick={() => switchScope(c.scope)}
                 className={cx(
-                  "rounded-md px-3 py-1 text-xs font-medium transition-colors",
+                  "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
                   scope === c.scope ? "bg-accent text-white" : "text-ink-secondary hover:text-ink",
                 )}
               >
@@ -116,7 +116,7 @@ export function ScopedInsight({
               disabled={!anyCategoryUnlocked}
               onChange={(e) => e.target.value && switchScope(e.target.value)}
               className={cx(
-                "rounded-lg border border-border bg-canvas px-2.5 py-1 text-xs font-medium transition-colors",
+                "rounded-lg border border-border bg-canvas px-3 py-1.5 text-sm font-medium transition-colors",
                 anyCategoryUnlocked ? "text-ink" : "cursor-not-allowed text-ink-tertiary",
                 selectValue ? "ring-1 ring-accent" : "",
               )}
@@ -147,10 +147,10 @@ export function ScopedInsight({
       )}
 
       {card.insufficientData ? (
-        <p className="mt-3 text-sm text-ink-secondary">{card.insufficientReason}</p>
+        <p className="mt-3 max-w-2xl text-sm text-ink-secondary">{card.insufficientReason}</p>
       ) : (
         <>
-          <p className="mt-3 text-sm text-ink-secondary">{bodyText}</p>
+          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-ink-secondary">{bodyText}</p>
           {/* Fresh: explain there's nothing to regenerate as a data limit, not a bug. */}
           {card.freshness === "fresh" && card.currentStatusLine && (
             <p className="mt-2 text-xs text-ink-tertiary">{card.currentStatusLine}</p>

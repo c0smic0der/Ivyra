@@ -14,7 +14,7 @@ export async function Header({ showWordmark = true }: { showWordmark?: boolean }
 
   return (
     <header className="sticky top-0 z-10 border-b border-border bg-canvas/80 backdrop-blur-md">
-      <div className="mx-auto flex h-16 w-full max-w-4xl items-center gap-6 px-6">
+      <div className="mx-auto flex h-[68px] w-full max-w-5xl items-center gap-6 px-6 lg:px-8">
         {showWordmark && (
           <Link
             href="/dashboard"
@@ -30,7 +30,7 @@ export async function Header({ showWordmark = true }: { showWordmark?: boolean }
           <div className="ml-auto flex shrink-0 items-center gap-3">
             <span className="hidden text-xs text-ink-tertiary sm:inline">{user.email}</span>
             <form action={signOut}>
-              <button type="submit" className={buttonVariants("ghost", { size: "sm" })}>
+              <button type="submit" className={buttonVariants("ghost", { size: "md" })}>
                 Sign out
               </button>
             </form>

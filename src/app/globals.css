@@ -1,9 +1,11 @@
 @import "tailwindcss";
 
 :root {
-  /* Page canvas is a hair off pure white so white Cards read as distinct
-     surfaces against it, rather than blending into an all-white page. */
-  --background: #fafafa;
+  /* Page canvas carries a whisper of the accent's cool cast — not flat neutral
+     gray — so white Cards read as clearly lifted surfaces and the page feels a
+     touch alive. The three-step scale is: page (--background) < inset
+     (--color-surface) is lighter, and cards (--color-canvas) are pure white on top. */
+  --background: #f4f5f9;
   --foreground: #171717;
 }
 
@@ -32,13 +34,52 @@
   --color-success: #059669;
   --color-danger: #e11d48;
 
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.04);
+  /* Resting card lift and the slightly stronger lift on hover for interactive
+     cards/rows. Both are low-opacity and soft — depth, not decoration. */
+  --shadow-card: 0 1px 2px rgba(24, 24, 27, 0.04), 0 1px 3px rgba(24, 24, 27, 0.06);
+  --shadow-card-hover: 0 2px 6px -1px rgba(24, 24, 27, 0.08), 0 6px 16px -4px rgba(24, 24, 27, 0.08);
+  /* A faint accent-tinted grounding for primary actions, so the accent reads as
+     a lit surface rather than a flat swatch. Restrained on purpose. */
+  --shadow-accent: 0 1px 2px rgba(79, 70, 229, 0.28);
+}
+
+/* A very soft, page-wide wash in the same spirit as the landing hero: a barely
+   perceptible accent tint at the top fading into the tinted page background by
+   the first scroll. White cards sit on top of it; it never competes with content
+   or reduces text contrast. Applied to the <main> of every app page (the landing
+   page carries its own hero gradient and is deliberately excluded). */
+.page-gradient {
+  background-image: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--color-accent-tint) 55%, transparent) 0%,
+    transparent 520px
+  );
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
+
+/* Shared hover affordance for interactive cards and rows: a quiet lift + a
+   slightly stronger shadow + an accent-tinted border. The vertical nudge is
+   gated behind prefers-reduced-motion; the shadow/border cue remains for
+   reduced-motion users so the affordance never disappears entirely. */
+.interactive-surface {
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+.interactive-surface:hover {
+  border-color: color-mix(in srgb, var(--color-accent) 40%, transparent);
+  box-shadow: var(--shadow-card-hover);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .interactive-surface:hover {
+    transform: translateY(-2px);
+  }
 }
 
 /* --- Landing-page motion (subtle; disabled for reduced-motion users) --- */

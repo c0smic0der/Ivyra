@@ -97,7 +97,7 @@ function CompactHistory({ items }: { items: CompactHistoryItem[] }) {
                   (focused + expanded), never a per-resolution detail page. */}
               <Link
                 href={`/insights?resolution=${row.id}#history`}
-                className="flex items-center justify-between gap-3 rounded-xl border border-border bg-canvas p-4 text-sm shadow-[var(--shadow-card)] transition-colors hover:border-accent/40"
+                className="interactive-surface flex items-center justify-between gap-3 rounded-xl border border-border bg-canvas p-4 text-sm shadow-[var(--shadow-card)]"
               >
                 <span className="min-w-0 text-ink">{row.text}</span>
                 <span className="flex shrink-0 items-center gap-3">
@@ -436,7 +436,7 @@ function HistoryCard({
   return (
     <li
       id={`resolution-${row.id}`}
-      className="scroll-mt-6 rounded-xl border border-border bg-canvas text-sm shadow-[var(--shadow-card)]"
+      className="interactive-surface scroll-mt-6 rounded-xl border border-border bg-canvas text-sm shadow-[var(--shadow-card)]"
     >
       <button
         type="button"

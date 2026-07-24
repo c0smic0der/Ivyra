@@ -31,6 +31,15 @@ const TONE_DOT: Record<Verdict["tone"], string> = {
   locked: "bg-ink-tertiary",
 };
 
+// A low-saturation tinted border on the verdict card — a quiet seasoning of the
+// status color, never a filled block. Neutral/locked stay on the default border.
+const TONE_CARD: Record<Verdict["tone"], string> = {
+  positive: "border-success/30",
+  caution: "border-warning/40",
+  neutral: "",
+  locked: "",
+};
+
 function scrollToHistory() {
   if (typeof window === "undefined") return;
   const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -113,9 +122,9 @@ function Kpi({
       onClick={onClick}
       aria-pressed={active}
       className={cx(
-        "flex flex-col items-center rounded-xl border px-3 py-3 text-center transition-colors",
+        "flex flex-col items-center rounded-xl border px-4 py-4 text-center transition-colors",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
-        active ? "border-accent bg-accent-tint" : "border-border-subtle hover:border-accent/40",
+        active ? "border-accent bg-accent-tint" : "border-border-subtle hover:border-accent/40 hover:bg-surface",
       )}
     >
       <span className="text-2xl font-semibold tabular-nums text-ink">{value}</span>
@@ -154,11 +163,11 @@ export function InsightsOverview({
   return (
     <>
       {/* Hero — the verdict (descriptive) + a glanceable KPI strip. Full width. */}
-      <Card className="mt-8">
+      <Card className={cx("mt-8", TONE_CARD[verdict.tone])}>
         <div className="flex items-start gap-3">
           <span className={cx("mt-2 h-2.5 w-2.5 shrink-0 rounded-full", TONE_DOT[verdict.tone])} aria-hidden />
           <div>
-            <h2 className="text-2xl font-semibold tracking-tight text-ink">
+            <h2 className="text-xl font-semibold tracking-tight text-ink">
               {verdict.headline}
               <span className="sr-only"> — calibration status: {verdictToneLabel(verdict.tone)}</span>
             </h2>
@@ -186,7 +195,7 @@ export function InsightsOverview({
 
       {/* The chart is the centre of this page — full width and large. */}
       <Card className="mt-8">
-        <div className="inline-flex rounded-lg border border-border p-0.5 text-xs" role="tablist" aria-label="Chart view">
+        <div className="inline-flex rounded-lg border border-border p-1 text-sm" role="tablist" aria-label="Chart view">
             {tabs.map((t) => (
               <button
                 key={t.key}
@@ -195,7 +204,7 @@ export function InsightsOverview({
                 aria-selected={tab === t.key}
                 onClick={() => setTab(t.key)}
                 className={cx(
-                  "rounded-md px-3 py-1 font-medium transition-colors",
+                  "rounded-md px-3 py-1.5 font-medium transition-colors",
                   tab === t.key ? "bg-accent text-white" : "text-ink-secondary hover:text-ink",
                 )}
               >
@@ -247,7 +256,7 @@ export function InsightsOverview({
                 <div className="mt-2">
                   {bias.unlocked ? (
                     <>
-                      <p className="text-4xl font-semibold tabular-nums text-ink">
+                      <p className="text-3xl font-semibold tabular-nums text-ink">
                         {bias.value! >= 0 ? "+" : ""}
                         {Math.round(bias.value! * 100)}
                       </p>

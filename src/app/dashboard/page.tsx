@@ -79,8 +79,8 @@ export default async function DashboardPage() {
     <>
       <Header />
       <HowItWorksGate />
-      <main className="flex flex-1 justify-center p-6">
-        <div className="w-full max-w-4xl">
+      <main className="page-gradient flex flex-1 justify-center px-6 py-8 lg:px-8">
+        <div className="w-full max-w-5xl">
           <h1 className="text-3xl font-semibold tracking-tight text-ink">Dashboard</h1>
 
           {/* Onboarding pointer — only while the account has no predictions. */}
@@ -152,7 +152,7 @@ export default async function DashboardPage() {
                   <li key={row.id}>
                     <Link
                       href={`/predictions/${row.id}/resolve`}
-                      className="flex items-center justify-between gap-3 rounded-xl border border-warning/30 bg-warning-soft p-4 text-sm transition-colors hover:border-warning/50"
+                      className="interactive-surface flex items-center justify-between gap-3 rounded-xl border border-warning/30 bg-warning-soft p-4 text-sm hover:!border-warning/60"
                     >
                       <span className="min-w-0">
                         <span className="block text-ink">{row.text}</span>

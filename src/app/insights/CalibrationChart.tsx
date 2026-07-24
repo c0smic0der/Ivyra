@@ -71,7 +71,7 @@ export function CalibrationChart({ points }: { points: CalibrationPoint[] }) {
   return (
     <div>
       <div className={interactive ? "cursor-pointer" : undefined}>
-        <ResponsiveContainer width="100%" height={440}>
+        <ResponsiveContainer width="100%" height={384}>
           <ComposedChart data={points} margin={{ top: 10, right: 20, bottom: 10, left: 10 }} onClick={openBand}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-border-subtle" />
             <XAxis

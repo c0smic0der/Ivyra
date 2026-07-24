@@ -38,7 +38,7 @@ function Section({ eyebrow, title, children }: { eyebrow: string; title: string;
       <CardLabel as="p" className="text-accent">
         {eyebrow}
       </CardLabel>
-      <h2 className="mt-3 text-2xl font-semibold tracking-tight text-ink">{title}</h2>
+      <h2 className="mt-3 text-xl font-semibold tracking-tight text-ink">{title}</h2>
       <div className="mt-5">{children}</div>
     </section>
   );
@@ -46,7 +46,9 @@ function Section({ eyebrow, title, children }: { eyebrow: string; title: string;
 
 function Paragraphs({ items }: { items: string[] }) {
   return (
-    <div className="flex flex-col gap-4">
+    // Prose stays in a readable measure even though the page container is wider —
+    // long lines hurt readability. Cards, demos, and grids use the full width.
+    <div className="flex max-w-2xl flex-col gap-4">
       {items.map((p, i) => (
         <p key={i} className="text-base leading-relaxed text-ink-secondary">
           {emphasize(p)}
@@ -93,12 +95,12 @@ export default async function HowItWorksPage() {
     <>
       <Header />
       <MarkSeen />
-      <main className="flex flex-1 justify-center px-6 py-10">
-        <div className="w-full max-w-3xl">
+      <main className="page-gradient flex flex-1 justify-center px-6 py-10 lg:px-8">
+        <div className="w-full max-w-5xl">
           {/* Hero */}
           <p className="text-sm font-medium text-accent">How it works</p>
-          <h1 className="mt-3 text-4xl font-semibold tracking-tight text-ink">{c.hero.headline}</h1>
-          <p className="mt-4 text-lg leading-relaxed text-ink-secondary">{c.hero.sub}</p>
+          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-ink sm:text-4xl">{c.hero.headline}</h1>
+          <p className="mt-4 max-w-2xl text-lg leading-relaxed text-ink-secondary">{c.hero.sub}</p>
 
           <div className="mt-16 flex flex-col gap-16">
             <ProseSection copy={c.problem} />
@@ -158,7 +160,7 @@ export default async function HowItWorksPage() {
 
             {/* Why some things unlock later */}
             <Section eyebrow={c.unlocks.eyebrow} title={c.unlocks.title}>
-              <p className="text-base leading-relaxed text-ink-secondary">{emphasize(c.unlocks.intro)}</p>
+              <p className="max-w-2xl text-base leading-relaxed text-ink-secondary">{emphasize(c.unlocks.intro)}</p>
               <ol className="mt-6 flex flex-col gap-4">
                 {c.unlocks.items.map((u) => (
                   <li key={u.title} className="flex gap-4">
@@ -185,8 +187,8 @@ export default async function HowItWorksPage() {
 
             {/* CTA */}
             <section className="border-t border-border-subtle pt-14">
-              <h2 className="text-2xl font-semibold tracking-tight text-ink">{c.cta.title}</h2>
-              <p className="mt-3 text-base leading-relaxed text-ink-secondary">{c.cta.body}</p>
+              <h2 className="text-xl font-semibold tracking-tight text-ink">{c.cta.title}</h2>
+              <p className="mt-3 max-w-2xl text-base leading-relaxed text-ink-secondary">{c.cta.body}</p>
               <div className="mt-6">
                 <Link
                   href={user ? "/predictions/new" : "/?signin=1"}

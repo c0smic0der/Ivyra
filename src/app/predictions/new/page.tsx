@@ -29,8 +29,8 @@ export default async function NewPredictionPage({
   return (
     <>
       <Header />
-      <main className="flex flex-1 justify-center p-6">
-        <div className="mx-auto w-full max-w-2xl">
+      <main className="page-gradient flex flex-1 justify-center px-6 py-8 lg:px-8">
+        <div className="mx-auto w-full max-w-3xl">
           <h1 className="text-3xl font-semibold tracking-tight text-ink">New prediction</h1>
           <p className="mt-2 text-sm text-ink-secondary">
             Write it in your own words, attach a confidence, and pick a resolution date.

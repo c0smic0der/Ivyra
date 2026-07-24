@@ -101,7 +101,7 @@ export function ProgressChart({ trend, baseline }: { trend: ProgressPoint[]; bas
   return (
     <div>
       <div className="mb-3 flex items-center justify-between gap-3">
-        <div className="inline-flex rounded-lg border border-border p-0.5 text-xs">
+        <div className="inline-flex rounded-lg border border-border p-1 text-sm">
           {(["recent", "lifetime"] as const).map((m) => (
             <button
               key={m}
@@ -109,7 +109,7 @@ export function ProgressChart({ trend, baseline }: { trend: ProgressPoint[]; bas
               onClick={() => setMode(m)}
               aria-pressed={mode === m}
               className={cx(
-                "rounded-md px-3 py-1 font-medium capitalize transition-colors",
+                "rounded-md px-3 py-1.5 font-medium capitalize transition-colors",
                 mode === m ? "bg-accent text-white" : "text-ink-secondary hover:text-ink",
               )}
             >
@@ -131,7 +131,7 @@ export function ProgressChart({ trend, baseline }: { trend: ProgressPoint[]; bas
       <div className="cursor-crosshair select-none">
         {/* key={mode} remounts the chart on toggle so no cached dot geometry
             from the previous series can linger. */}
-        <ResponsiveContainer key={mode} width="100%" height={400}>
+        <ResponsiveContainer key={mode} width="100%" height={352}>
           <ComposedChart
             data={plotted}
             margin={{ top: 10, right: 20, bottom: 10, left: 10 }}

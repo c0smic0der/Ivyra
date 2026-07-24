@@ -140,10 +140,10 @@ export default async function InsightsPage({
   return (
     <>
       <Header />
-      <main className="flex flex-1 justify-center p-6">
+      <main className="page-gradient flex flex-1 justify-center px-6 py-8 lg:px-8">
         {/* Same container width as the dashboard, so the "Insights" title sits in
             the exact same spot as "Dashboard" when moving between the two pages. */}
-        <div className="w-full max-w-4xl">
+        <div className="w-full max-w-5xl">
           <h1 className="text-3xl font-semibold tracking-tight text-ink">Insights</h1>
 
           {vm.n === 0 && (

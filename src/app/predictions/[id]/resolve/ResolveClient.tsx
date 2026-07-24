@@ -55,7 +55,7 @@ export function ResolveClient({ id }: { id: string }) {
             <p className="text-sm text-ink-secondary">Voided — excluded from your score.</p>
           ) : (
             <>
-              <p className="text-4xl font-semibold tabular-nums text-ink">
+              <p className="text-3xl font-semibold tabular-nums text-ink">
                 {result.brier?.toFixed(2)}
               </p>
               <p className="mt-1 text-sm text-ink-secondary">{result.sentence}</p>
