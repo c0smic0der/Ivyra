@@ -150,7 +150,7 @@ const EVIDENCE: { headline: string; body: React.ReactNode; cite: string; href: s
         A 2025 experiment found that showing people their calibration score and an
         over/under-confidence readout{" "}
         <span className="font-medium text-ink">did not, on its own, improve their calibration</span>.
-        A bare number doesn&apos;t teach — which is exactly why Aftercast never stops at one.
+        A bare number doesn&apos;t teach — which is exactly why Marne never stops at one.
       </>
     ),
     cite: "Martin & Mandel — Futures & Foresight Science (2025)",
@@ -189,7 +189,7 @@ export default async function Home({
       <header className="sticky top-0 z-10 border-b border-border bg-canvas/80 backdrop-blur-md">
         <div className="mx-auto flex h-20 w-full max-w-5xl items-center justify-between gap-4 px-6">
           <span className="font-wordmark text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
-            Aftercast<span className="text-accent">.</span>
+            Marne<span className="text-accent">.</span>
           </span>
           <div className="flex flex-col items-end gap-1.5">
             <div className="flex items-center gap-2 sm:gap-3">
@@ -217,7 +217,7 @@ export default async function Home({
                 Sharpen the judgment behind every decision.
               </h1>
               <p className="mt-5 max-w-xl text-lg leading-relaxed text-ink-secondary">
-                Aftercast turns your real-life predictions into an honest track record — showing where
+                Marne turns your real-life predictions into an honest track record — showing where
                 your confidence is trustworthy, where it fools you, and how to recalibrate. Better
                 calls, backed by proof.
               </p>
@@ -237,7 +237,7 @@ export default async function Home({
             </h2>
             <p className="mt-4 text-lg leading-relaxed text-ink-secondary">
               Deadlines, money, hiring, your own habits. How many actually pan out? Most people never
-              find out — so the same confident mistakes repeat for years. Aftercast keeps score with math
+              find out — so the same confident mistakes repeat for years. Marne keeps score with math
               you can&apos;t fudge, and shows you exactly where to adjust.
             </p>
           </div>
@@ -326,7 +326,7 @@ export default async function Home({
               <Card as="div" className="flex flex-col">
                 <h3 className="text-base font-semibold text-ink">Learn from every miss</h3>
                 <p className="mt-1.5 text-sm leading-relaxed text-ink-secondary">
-                  When a call goes wrong, Aftercast diffs what you predicted against what happened —
+                  When a call goes wrong, Marne diffs what you predicted against what happened —
                   anchored only to what you wrote, never invented.
                 </p>
                 <div className="mt-auto pt-5">
@@ -405,7 +405,7 @@ export default async function Home({
                 Built on what the research shows works
               </h2>
               <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-ink-secondary">
-                The loop Aftercast runs — make a call, see what happens, get a real score, adjust — is one
+                The loop Marne runs — make a call, see what happens, get a real score, adjust — is one
                 of the most studied ways to sharpen judgment. A few of the findings we built on:
               </p>
             </div>
@@ -432,7 +432,7 @@ export default async function Home({
             <p className="mx-auto mt-8 max-w-2xl text-center text-sm text-ink-tertiary">
               These are findings about calibration in general, not a promise about your results. We
               lean on the mechanism the evidence supports — and because a bare score doesn&apos;t
-              teach on its own, Aftercast pairs every number with plain-language interpretation and a
+              teach on its own, Marne pairs every number with plain-language interpretation and a
               concrete technique to try next.
             </p>
           </div>

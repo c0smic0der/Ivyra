@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 // Wordmark-only face — distinct from the Geist body copy, used solely for
-// the "Aftercast" logotype in Header.
+// the "Marne" logotype in Header.
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
   subsets: ["latin"],
@@ -23,7 +23,7 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Aftercast",
+  title: "Marne",
   description:
     "Log real-life predictions, resolve them, and score your calibration over time.",
 };

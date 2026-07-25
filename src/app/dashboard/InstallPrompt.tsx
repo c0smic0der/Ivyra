@@ -8,7 +8,7 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
-const DISMISS_KEY = "aftercast:install-prompt-dismissed";
+const DISMISS_KEY = "marne:install-prompt-dismissed";
 const dismissListeners = new Set<() => void>();
 
 function subscribeDismissed(listener: () => void) {
@@ -79,7 +79,7 @@ export function InstallPrompt({ hasAnyPrediction }: { hasAnyPrediction: boolean 
 
   return (
     <div className="mt-8 flex flex-col gap-2 rounded-xl border border-border bg-canvas p-4 text-sm shadow-[var(--shadow-card)] sm:flex-row sm:items-center sm:justify-between">
-      <p className="text-ink-secondary">Install Aftercast for quicker access to your predictions.</p>
+      <p className="text-ink-secondary">Install Marne for quicker access to your predictions.</p>
       <div className="flex shrink-0 gap-2">
         <button type="button" onClick={persistDismissed} className={buttonVariants("ghost", { size: "sm" })}>
           Not now

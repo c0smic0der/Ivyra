@@ -11,4 +11,4 @@ export function getResendClient(): Resend {
 
 // Sandbox sender — the app's own domain isn't verified with Resend yet.
 // Swap once a verified domain is set up.
-export const REMINDER_FROM_ADDRESS = "Aftercast <onboarding@resend.dev>";
+export const REMINDER_FROM_ADDRESS = "Marne <onboarding@resend.dev>";
