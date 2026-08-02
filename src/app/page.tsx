@@ -4,9 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { CalibrationChart } from "@/app/insights/CalibrationChart";
 import type { CalibrationPoint } from "@/lib/insights/insightsCore";
 import { Card, CardLabel } from "@/components/ui/Card";
-import { buttonVariants } from "@/components/ui/button";
 import { SignInButton, SignInProvider } from "@/components/auth/SignIn";
-import { STEPS } from "@/lib/content/howItWorks";
 
 // Marketing sample only — empty `predictions` makes the chart's drill-down
 // self-disable, so this renders as a static curve with no click affordance.
@@ -18,87 +16,75 @@ const SAMPLE_POINTS: CalibrationPoint[] = [
   { x: 0.95, y: 0.72, n: 6, low: 0.9, high: 1, predictions: [] },
 ];
 
-// --- small inline visuals (no external assets) -----------------------------
+// --- the hero "screenshot": a static render of the journal timeline (§3.2) ----
+// The point of showing it here is that the register is a journal — dated entries
+// in the user's own words — while the mechanics stay unmistakable: each entry
+// carries a claim, a confidence, and the reasoning behind it, with the score as
+// the annotation on the right. No promise of free-form writing: every entry is a
+// prediction.
+type MockEntry = {
+  day: string;
+  claim: string;
+  reasoning: string;
+  annotation: React.ReactNode;
+};
 
-function StepIcon({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-accent-tint text-accent">
-      {children}
-    </span>
-  );
-}
-
-const STEP_ICONS = [
-  // predict — pencil
-  <svg key="p" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-    <path d="M12 20h9" />
-    <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
-  </svg>,
-  // resolve — check circle
-  <svg key="r" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-    <path d="M22 11.1V12a10 10 0 1 1-5.9-9.1" />
-    <path d="m9 11 3 3L22 4" />
-  </svg>,
-  // recalibrate — target
-  <svg key="c" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-    <circle cx="12" cy="12" r="9" />
-    <circle cx="12" cy="12" r="4.5" />
-    <circle cx="12" cy="12" r="0.5" fill="currentColor" />
-  </svg>,
+const MOCK_ENTRIES: MockEntry[] = [
+  {
+    day: "28 Jul",
+    claim: "We ship the redesign by the 15th",
+    reasoning: "Third week with no assets and I'm starting to think this isn't a delay so much as the plan…",
+    annotation: <span className="text-ink-tertiary">80% · resolves 15/8</span>,
+  },
+  {
+    day: "21 Jul",
+    claim: "They come back with a better offer by end of month",
+    reasoning: "Said 75%. They didn't come back at all. I keep pricing hope as if it were evidence…",
+    annotation: (
+      <span className="inline-flex items-center gap-1 text-ink-tertiary">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-danger" aria-hidden>
+          <path d="M18 6 6 18M6 6l12 12" />
+        </svg>
+        0.64
+      </span>
+    ),
+  },
+  {
+    day: "14 Jul",
+    claim: "Review time drops below a day within a month of the trunk-based switch",
+    reasoning: "The bottleneck was always batching, and small PRs merge on their own…",
+    annotation: (
+      <span className="inline-flex items-center gap-1 text-ink-tertiary">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-success" aria-hidden>
+          <path d="M20 6 9 17l-5-5" />
+        </svg>
+        0.09
+      </span>
+    ),
+  },
 ];
 
-/** A compact "here's what you'd see" product teaser for the hero. */
-function DashboardPreview() {
+function JournalTimelineMock() {
   return (
     <Card as="div" className="animate-fade-up">
       <div className="flex items-center justify-between">
-        <CardLabel>Your calibration</CardLabel>
+        <CardLabel>Your journal</CardLabel>
         <span className="rounded-full bg-accent-tint px-2 py-0.5 text-[10px] font-medium text-accent">
-          After ~20 calls
+          Newest first
         </span>
       </div>
-
-      <div className="mt-4 grid grid-cols-2 gap-4">
-        <div>
-          <p className="text-3xl font-semibold tabular-nums text-ink">0.18</p>
-          <p className="mt-0.5 text-xs text-ink-tertiary">Brier — beats the 0.25 coin-flip</p>
-        </div>
-        <div>
-          <p className="text-3xl font-semibold tabular-nums text-ink">+14</p>
-          <p className="mt-0.5 text-xs text-ink-tertiary">points overconfident</p>
-        </div>
-      </div>
-
-      {/* bias meter */}
-      <div className="mt-5">
-        <div className="flex justify-between text-[10px] uppercase tracking-wide text-ink-tertiary">
-          <span>Underconfident</span>
-          <span>Overconfident</span>
-        </div>
-        <div className="relative mt-1 h-2 rounded-full bg-surface">
-          <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-border" />
-          <div className="animate-grow-x absolute left-1/2 top-0 h-full rounded-full bg-accent" style={{ width: "26%" }} />
-        </div>
-      </div>
-
-      {/* rolling-Brier sparkline, trending down (improving) */}
-      <div className="mt-5">
-        <div className="flex items-baseline justify-between">
-          <CardLabel>Rolling Brier</CardLabel>
-          <span className="text-xs text-ink-tertiary">0.24 → 0.16</span>
-        </div>
-        <svg viewBox="0 0 220 56" className="mt-2 w-full" preserveAspectRatio="none" aria-hidden>
-          <polyline
-            className="animate-draw"
-            style={{ "--draw-len": "320" } as React.CSSProperties}
-            points="0,14 37,22 73,16 110,30 147,34 183,42 220,46"
-            fill="none"
-            stroke="var(--color-accent)"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
+      <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-tertiary">July</p>
+      <div className="mt-2 divide-y divide-border-subtle">
+        {MOCK_ENTRIES.map((e) => (
+          <div key={e.day} className="py-3">
+            <div className="flex items-baseline justify-between gap-4 text-xs tabular-nums">
+              <span className="text-ink-tertiary">{e.day}</span>
+              {e.annotation}
+            </div>
+            <p className="mt-1 text-[13px] leading-snug text-ink">{e.claim}</p>
+            <p className="mt-1 line-clamp-2 text-[13px] leading-snug text-ink-tertiary">{e.reasoning}</p>
+          </div>
+        ))}
       </div>
     </Card>
   );
@@ -185,16 +171,17 @@ export default async function Home({
           </p>
         </div>
       )}
-      {/* Landing-only top bar: brand + the two CTAs (no app nav tabs). */}
+      {/* Landing-only top bar: brand + the single CTA. "How it works" is a quiet
+          text link, not a competing button. */}
       <header className="sticky top-0 z-10 border-b border-border bg-canvas/80 backdrop-blur-md">
         <div className="mx-auto flex h-20 w-full max-w-5xl items-center justify-between gap-4 px-6">
           <span className="font-wordmark text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
             Marne<span className="text-accent">.</span>
           </span>
           <div className="flex flex-col items-end gap-1.5">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <Link href="/how-it-works" className={buttonVariants("secondary", { size: "md" })}>
-                See how it works
+            <div className="flex items-center gap-4 sm:gap-5">
+              <Link href="/how-it-works" className="text-sm text-ink-secondary transition-colors hover:text-ink">
+                How it works
               </Link>
               <SignInButton size="md">Get started</SignInButton>
             </div>
@@ -206,154 +193,98 @@ export default async function Home({
       </header>
 
       <main className="flex flex-1 flex-col items-center">
-        {/* HERO */}
+        {/* HERO — journal sentence as headline; calibration as the subline
+            immediately beneath (docs/04 §1 hero pattern). Calibration is the
+            product; the journal is its shape. */}
         <section className="w-full bg-gradient-to-b from-accent-tint/60 to-transparent">
           <div className="mx-auto grid w-full max-w-5xl grid-cols-1 items-center gap-12 px-6 pb-16 pt-10 lg:grid-cols-2 lg:pb-24 lg:pt-14">
             <div className="animate-fade-up">
               <span className="inline-block rounded-full border border-border bg-canvas px-3 py-1 text-xs font-medium text-ink-secondary">
-                A decision journal with a real score
+                A journal that keeps score
               </span>
               <h1 className="mt-4 text-4xl font-semibold leading-[1.1] tracking-tight text-ink sm:text-5xl">
-                Sharpen the judgment behind every decision.
+                A journal for what you think will happen — and how often you&apos;re right.
               </h1>
               <p className="mt-5 max-w-xl text-lg leading-relaxed text-ink-secondary">
-                Marne turns your real-life predictions into an honest track record — showing where
-                your confidence is trustworthy, where it fools you, and how to recalibrate. Better
-                calls, backed by proof.
+                Every entry is scored against what actually happened. Over time, you learn exactly
+                when to trust your own confidence — and where it runs ahead of you.
               </p>
+              <div className="mt-8">
+                <SignInButton className="text-base">Get started — it&apos;s free</SignInButton>
+              </div>
             </div>
 
             <div className="lg:pl-6">
-              <DashboardPreview />
+              <JournalTimelineMock />
             </div>
           </div>
         </section>
 
-        {/* HOOK */}
+        {/* IDENTITY — the corrected §2 sentence, standing on its own. */}
         <section className="w-full px-6 py-16">
           <div className="mx-auto max-w-3xl text-center">
-            <h2 className="text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
-              You make dozens of judgment calls a week.
-            </h2>
-            <p className="mt-4 text-lg leading-relaxed text-ink-secondary">
-              Deadlines, money, hiring, your own habits. How many actually pan out? Most people never
-              find out — so the same confident mistakes repeat for years. Marne keeps score with math
-              you can&apos;t fudge, and shows you exactly where to adjust.
+            <p className="text-xl font-medium leading-relaxed text-ink sm:text-2xl">
+              Marne measures whether your confidence means what you think it does — and shows you
+              exactly where it doesn&apos;t.
             </p>
           </div>
         </section>
 
-        {/* HOW IT WORKS */}
-        <section className="w-full bg-surface px-6 py-16">
-          <div className="mx-auto max-w-5xl">
-            <div className="text-center">
-              <CardLabel as="p">How it works</CardLabel>
-              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
-                Three steps, thirty seconds each
-              </h2>
-            </div>
-            <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-3">
-              {STEPS.map((step, i) => (
-                <Card key={step.title} as="div">
-                  <StepIcon>{STEP_ICONS[i]}</StepIcon>
-                  <h3 className="mt-4 text-base font-semibold text-ink">{step.title}</h3>
-                  <p className="mt-1.5 text-sm leading-relaxed text-ink-secondary">{step.body}</p>
-                </Card>
-              ))}
-            </div>
-          </div>
-        </section>
+        {/* ── PRIMARY: CALIBRATION ─────────────────────────────────────────── */}
 
-        {/* BENEFITS */}
-        <section className="w-full px-6 py-16">
-          <div className="mx-auto max-w-5xl">
-            <div className="text-center">
-              <CardLabel as="p">What you get</CardLabel>
-              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
-                Not just a journal — a mirror for your judgment
-              </h2>
-            </div>
-
-            <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-3">
-              {/* overconfidence */}
-              <Card as="div" className="flex flex-col">
-                <h3 className="text-base font-semibold text-ink">Catch your overconfidence</h3>
-                <p className="mt-1.5 text-sm leading-relaxed text-ink-secondary">
-                  One Bias score tells you whether your 90%s are really 90%s. For most people, they
-                  aren&apos;t — and that gap is where decisions go wrong.
-                </p>
-                <div className="mt-auto pt-5">
-                  <div className="flex justify-between text-[10px] uppercase tracking-wide text-ink-tertiary">
-                    <span>Under</span>
-                    <span>Over</span>
-                  </div>
-                  <div className="relative mt-1 h-2 rounded-full bg-surface">
-                    <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-border" />
-                    <div className="absolute left-1/2 top-0 h-full rounded-full bg-accent" style={{ width: "30%" }} />
-                  </div>
-                  <p className="mt-2 text-xs text-ink-tertiary">
-                    <span className="font-medium text-ink">+14 points</span> overconfident
-                  </p>
-                </div>
-              </Card>
-
-              {/* improvement */}
-              <Card as="div" className="flex flex-col">
-                <h3 className="text-base font-semibold text-ink">Watch yourself get sharper</h3>
-                <p className="mt-1.5 text-sm leading-relaxed text-ink-secondary">
-                  Your rolling Brier score turns &quot;am I improving?&quot; into a line you can
-                  actually watch bend — recent calls weighed against your lifetime average.
-                </p>
-                <div className="mt-auto pt-5">
-                  <svg viewBox="0 0 220 56" className="w-full" preserveAspectRatio="none" aria-hidden>
-                    <line x1="0" y1="28" x2="220" y2="28" stroke="var(--color-border)" strokeDasharray="4 4" />
-                    <polyline
-                      points="0,16 37,24 73,18 110,30 147,36 183,42 220,48"
-                      fill="none"
-                      stroke="var(--color-accent)"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                  <p className="mt-2 text-xs text-ink-tertiary">
-                    Last 20: <span className="font-medium text-ink">0.16</span> vs 0.24 lifetime
-                  </p>
-                </div>
-              </Card>
-
-              {/* post-mortem */}
-              <Card as="div" className="flex flex-col">
-                <h3 className="text-base font-semibold text-ink">Learn from every miss</h3>
-                <p className="mt-1.5 text-sm leading-relaxed text-ink-secondary">
-                  When a call goes wrong, Marne diffs what you predicted against what happened —
-                  anchored only to what you wrote, never invented.
-                </p>
-                <div className="mt-auto pt-5">
-                  <div className="rounded-xl border border-border-subtle bg-surface p-3">
-                    <CardLabel as="p">Looking back</CardLabel>
-                    <p className="mt-1.5 text-xs leading-relaxed text-ink-secondary">
-                      &quot;Your reasoning never mentioned the dependency that caused the slip — the
-                      third deadline miss that came from outside your team.&quot;
-                    </p>
-                  </div>
-                </div>
-              </Card>
-            </div>
-          </div>
-        </section>
-
-        {/* CALIBRATION CURVE EXPLAINED */}
+        {/* A. Know when to trust your own confidence — the frequency gap. */}
         <section className="w-full bg-surface px-6 py-16">
           <div className="mx-auto grid max-w-5xl grid-cols-1 items-center gap-10 lg:grid-cols-2">
             <div>
-              <CardLabel as="p">The calibration curve</CardLabel>
+              <CardLabel as="p" className="text-accent">
+                Know when to trust yourself
+              </CardLabel>
               <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
-                See exactly where your gut is right
+                Turn &ldquo;I&apos;m pretty sure&rdquo; into a number you can check
               </h2>
               <p className="mt-4 text-base leading-relaxed text-ink-secondary">
-                Each dot groups the predictions you made at a similar confidence level, then plots
-                that confidence against how often you were actually right.
+                Marne counts how often your predictions actually come true at each confidence level.
+                So &ldquo;I&apos;m 85% sure&rdquo; stops being a feeling and becomes a frequency — one
+                you can hold up against reality, call after call.
+              </p>
+            </div>
+            <Card as="div">
+              <CardLabel>Your calibration, in one line</CardLabel>
+              <p className="mt-3 text-2xl font-semibold leading-snug text-ink">
+                When you say 85%, it happens{" "}
+                <span className="text-accent">38%</span> of the time.
+              </p>
+              <div className="mt-5">
+                <div className="flex justify-between text-[10px] uppercase tracking-wide text-ink-tertiary">
+                  <span>Underconfident</span>
+                  <span>Overconfident</span>
+                </div>
+                <div className="relative mt-1 h-2 rounded-full bg-surface">
+                  <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-border" />
+                  <div className="absolute left-1/2 top-0 h-full rounded-full bg-accent" style={{ width: "34%" }} />
+                </div>
+                <p className="mt-2 text-xs text-ink-tertiary">
+                  <span className="font-medium text-ink">+47 points</span> overconfident — your
+                  high-confidence calls land less often than you claim.
+                </p>
+              </div>
+            </Card>
+          </div>
+        </section>
+
+        {/* B. The calibration curve — the whole picture across confidence levels. */}
+        <section className="w-full px-6 py-16">
+          <div className="mx-auto grid max-w-5xl grid-cols-1 items-center gap-10 lg:grid-cols-2">
+            <div className="lg:order-2">
+              <CardLabel as="p" className="text-accent">
+                The calibration curve
+              </CardLabel>
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
+                See it across every confidence level
+              </h2>
+              <p className="mt-4 text-base leading-relaxed text-ink-secondary">
+                Each dot groups the predictions you made at a similar confidence, then plots that
+                confidence against how often those calls actually came true.
               </p>
               <ul className="mt-5 flex flex-col gap-3 text-sm text-ink-secondary">
                 <li className="flex items-start gap-2.5">
@@ -366,8 +297,8 @@ export default async function Home({
                 <li className="flex items-start gap-2.5">
                   <LegendDot className="mt-1 bg-accent" />
                   <span>
-                    <span className="font-medium text-ink">Dots below the line</span> mean you were
-                    overconfident; above means underconfident.
+                    <span className="font-medium text-ink">Dots below the line</span> mean it
+                    happened less often than you said; above means more often.
                   </span>
                 </li>
                 <li className="flex items-start gap-2.5">
@@ -377,7 +308,7 @@ export default async function Home({
               </ul>
             </div>
 
-            <div>
+            <div className="lg:order-1">
               <Card as="div">
                 <div className="flex items-center justify-between">
                   <CardLabel>Calibration curve</CardLabel>
@@ -396,8 +327,79 @@ export default async function Home({
           </div>
         </section>
 
-        {/* GROUNDED IN RESEARCH */}
+        {/* C. The track-record panel — a frequency BEFORE you commit. */}
+        <section className="w-full bg-surface px-6 py-16">
+          <div className="mx-auto grid max-w-5xl grid-cols-1 items-center gap-10 lg:grid-cols-2">
+            <div>
+              <CardLabel as="p" className="text-accent">
+                Before you commit
+              </CardLabel>
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
+                Your own track record, at the moment you predict
+              </h2>
+              <p className="mt-4 text-base leading-relaxed text-ink-secondary">
+                As you write a new entry, Marne finds the calls you&apos;ve made like it before and
+                shows how they actually turned out — a plain frequency, surfaced before you lock in
+                your confidence. It states what happened and stops there.
+              </p>
+            </div>
+            <div>
+              <div className="rounded-xl border border-accent/25 bg-accent-tint px-4 py-4">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-accent">Before you save</p>
+                <p className="mt-1 text-base text-ink">
+                  You&apos;ve said 75% or higher on 6 calls like this. 2 landed.
+                </p>
+              </div>
+              <p className="mt-2 text-center text-xs text-ink-tertiary">
+                The only read that fires before a call, not after it.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* ── SECONDARY: THE RECORD ────────────────────────────────────────── */}
+
+        {/* D. It reads back like a journal — the register, with a real entry. */}
         <section className="w-full px-6 py-16">
+          <div className="mx-auto grid max-w-5xl grid-cols-1 items-center gap-10 lg:grid-cols-2">
+            <div>
+              <CardLabel as="p">The record</CardLabel>
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
+                It reads back like a journal
+              </h2>
+              <p className="mt-4 text-base leading-relaxed text-ink-secondary">
+                Every prediction is a dated entry in your own words: the claim, your confidence, and
+                why you believed it — frozen the moment you save. Months later it&apos;s a timeline of
+                your thinking, honest because the score won&apos;t let it drift.
+              </p>
+              <p className="mt-3 text-sm leading-relaxed text-ink-tertiary">
+                Not a blank page — every entry is a prediction, anchored to a claim. The reasoning is
+                optional: a sentence or a paragraph, and it&apos;s the part you&apos;ll read back.
+              </p>
+            </div>
+
+            {/* A real example entry: claim, confidence, reasoning — mechanics unmistakable. */}
+            <Card as="div">
+              <div className="flex items-baseline justify-between gap-4">
+                <span className="text-xs tabular-nums text-ink-tertiary">28 Jul</span>
+                <span className="text-xs tabular-nums text-ink-tertiary">80% · resolves 15 Aug</span>
+              </div>
+              <p className="mt-2 text-base font-medium text-ink">We ship the redesign by the 15th</p>
+              <div className="mt-3 rounded-lg border border-border-subtle bg-surface p-3">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-ink-tertiary">Why I think so</p>
+                <p className="mt-1 text-sm leading-relaxed text-ink-secondary">
+                  Third week with no assets and I&apos;m starting to think this isn&apos;t a delay so
+                  much as the plan. Still, the team has pulled these in before — I want that to be
+                  true, so maybe I&apos;m giving it more weight than I should.
+                </p>
+              </div>
+              <p className="mt-3 text-xs text-ink-tertiary">Locks when you save.</p>
+            </Card>
+          </div>
+        </section>
+
+        {/* GROUNDED IN RESEARCH */}
+        <section className="w-full bg-surface px-6 py-16">
           <div className="mx-auto max-w-5xl">
             <div className="text-center">
               <CardLabel as="p">Grounded in research</CardLabel>
@@ -406,7 +408,7 @@ export default async function Home({
               </h2>
               <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-ink-secondary">
                 The loop Marne runs — make a call, see what happens, get a real score, adjust — is one
-                of the most studied ways to sharpen judgment. A few of the findings we built on:
+                of the most studied ways to improve calibration. A few of the findings we built on:
               </p>
             </div>
 
@@ -432,27 +434,23 @@ export default async function Home({
             <p className="mx-auto mt-8 max-w-2xl text-center text-sm text-ink-tertiary">
               These are findings about calibration in general, not a promise about your results. We
               lean on the mechanism the evidence supports — and because a bare score doesn&apos;t
-              teach on its own, Marne pairs every number with plain-language interpretation and a
-              concrete technique to try next.
+              teach on its own, Marne pairs every number with plain-language interpretation.
             </p>
           </div>
         </section>
 
-        {/* FINAL CTA */}
+        {/* FINAL CTA — the single call to action. */}
         <section className="w-full px-6 py-20">
           <div className="mx-auto max-w-2xl text-center">
             <h2 className="text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
               Start your track record today
             </h2>
             <p className="mt-4 text-lg leading-relaxed text-ink-secondary">
-              It takes about thirty seconds to log your first prediction. In a few weeks, you&apos;ll
-              know something about yourself most people never do.
+              It takes about thirty seconds to log your first entry. In a few weeks, you&apos;ll know
+              something about yourself most people never do: how often you&apos;re actually right.
             </p>
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            <div className="mt-8 flex justify-center">
               <SignInButton className="text-base">Get started — it&apos;s free</SignInButton>
-              <Link href="/how-it-works" className={buttonVariants("secondary", { className: "text-base" })}>
-                See how it works
-              </Link>
             </div>
           </div>
         </section>

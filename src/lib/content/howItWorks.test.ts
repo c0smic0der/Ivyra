@@ -51,3 +51,34 @@ describe("how-it-works copy — no jargon", () => {
     expect(BOLDNESS_COPY.join(" ").toLowerCase()).toContain("boldness");
   });
 });
+
+// The CLAUDE.md copy rule: every user-facing string reports the confidence↔
+// frequency relationship; none evaluates whether a decision/call was good, wise,
+// or correct, and none prescribes what to do. This scans the whole page's copy.
+describe("how-it-works copy — calibration only, never merit", () => {
+  const MERIT_FORBIDDEN = [
+    "good call",
+    "bad call",
+    "good decision",
+    "bad decision",
+    "better decision",
+    "better call",
+    "smarter decision",
+    "poor judgment",
+    "right to",
+    "wrong to",
+    "should have",
+    "sharpen the judgment",
+    "sharpen your judgment",
+    "how good the call",
+    "behind your next decision",
+    "behind every decision",
+  ];
+
+  it("evaluates no decision — only the confidence↔frequency relationship", () => {
+    const joined = ALL_HOW_IT_WORKS_COPY.join(" | ").toLowerCase();
+    for (const phrase of MERIT_FORBIDDEN) {
+      expect(joined, `merit phrasing "${phrase}" reached the how-it-works copy`).not.toContain(phrase);
+    }
+  });
+});

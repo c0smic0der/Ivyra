@@ -15,7 +15,7 @@ export const STEPS = [
   },
   {
     title: "3. Recalibrate",
-    body: "After a handful of resolutions, Marne scores your calibration — plotting your stated confidence against what actually happened — so you can see where you lean over- or under-confident and sharpen the judgment behind your next decision.",
+    body: "After a handful of resolutions, Marne scores your calibration — plotting your stated confidence against what actually happened — so you can see where you lean over- or under-confident and know when to trust your own confidence next time.",
   },
 ];
 
@@ -86,7 +86,7 @@ export const HOW_IT_WORKS = {
       {
         step: "3",
         title: "Score",
-        body: "Fixed math — never a guess, never AI — turns that prediction and outcome into an exact number for how good the call was.",
+        body: "Fixed math — never a guess, never AI — turns that prediction and outcome into an exact number for how close your confidence landed to what happened.",
       },
       {
         step: "4",
