@@ -15,7 +15,7 @@ export const STEPS = [
   },
   {
     title: "3. Recalibrate",
-    body: "After a handful of resolutions, Marne scores your calibration — plotting your stated confidence against what actually happened — so you can see where you lean over- or under-confident and know when to trust your own confidence next time.",
+    body: "After a handful of resolutions, Ivyra scores your calibration — plotting your stated confidence against what actually happened — so you can see where you lean over- or under-confident and know when to trust your own confidence next time.",
   },
 ];
 
@@ -34,11 +34,11 @@ export interface Section {
 export const HOW_IT_WORKS = {
   hero: {
     headline: "Does your confidence match reality?",
-    sub: "You make judgment calls every day — this will ship on time, that hire will work out, I'll stick with the gym this year. Marne checks those calls against what actually happens, so you learn where your confidence is trustworthy — and where it runs ahead of the facts. No math required from you.",
+    sub: "You make judgment calls every day — this will ship on time, that hire will work out, I'll stick with the gym this year. Ivyra checks those calls against what actually happens, so you learn where your confidence is trustworthy — and where it runs ahead of the facts. No math required from you.",
   },
 
   metaDescription:
-    "What calibration is, in plain language: whether your confidence matches reality, how Marne measures it, and why the math grades you while AI only explains.",
+    "What calibration is, in plain language: whether your confidence matches reality, how Ivyra measures it, and why the math grades you while AI only explains.",
 
   problem: {
     eyebrow: "The problem",
@@ -50,7 +50,7 @@ export const HOW_IT_WORKS = {
     why: {
       question: "Is this just me, or is everyone like this?",
       answer:
-        "It's remarkably universal — decades of research find that people are systematically overconfident, and it barely tracks with intelligence or expertise. The good news buried in that research: it's a **trainable skill**, not a fixed trait. Weather forecasters, who get scored feedback every single day, end up among the best-calibrated people on earth. Marne gives you that same kind of feedback.",
+        "It's remarkably universal — decades of research find that people are systematically overconfident, and it barely tracks with intelligence or expertise. The good news buried in that research: it's a **trainable skill**, not a fixed trait. Weather forecasters, who get scored feedback every single day, end up among the best-calibrated people on earth. Ivyra gives you that same kind of feedback.",
     },
   } satisfies Section,
 
@@ -60,7 +60,7 @@ export const HOW_IT_WORKS = {
     paragraphs: [
       'This is the one idea everything else rests on, and most people have never had it spelled out. Picture a weather forecaster who says **"70% chance of rain."** What would make that a good forecast?',
       'Not whether it rains today. A "70% chance" isn\'t a promise that it will rain — it\'s a claim that **on days like this, it rains about 7 times out of 10.** So she\'s exactly right if, across all the days she says "70%," it rains on about 70% of them. The dry days aren\'t her being wrong — they\'re her forecast **coming true.** Three days in ten, it was supposed to stay dry.',
-      'So no single prediction can be "calibrated" or not — only a whole track record can. That\'s why Marne needs a little history before it can tell you much, and why it gets sharper the longer you use it.',
+      'So no single prediction can be "calibrated" or not — only a whole track record can. That\'s why Ivyra needs a little history before it can tell you much, and why it gets sharper the longer you use it.',
     ],
     why: {
       question: "Then how can a single prediction be scored at all?",
@@ -158,7 +158,7 @@ export const HOW_IT_WORKS = {
     eyebrow: "Honest expectations",
     title: "Why some things show up later",
     intro:
-      'Because calibration is about patterns, the richer read-outs need a bit of data before they mean anything. A curve built from eight predictions is noise — the same way a coin isn\'t "biased" for landing heads three times out of four. So Marne waits until a number actually means something, rather than guessing early. You get an exact score on your very first resolution; the bigger pictures arrive as you go:',
+      'Because calibration is about patterns, the richer read-outs need a bit of data before they mean anything. A curve built from eight predictions is noise — the same way a coin isn\'t "biased" for landing heads three times out of four. So Ivyra waits until a number actually means something, rather than guessing early. You get an exact score on your very first resolution; the bigger pictures arrive as you go:',
     items: [
       {
         n: "~10",

@@ -1,8 +1,10 @@
-# Caliber V2 — the journal reframe
+# Ivyra V2 — the journal reframe
 
 *Design spec and session-by-session runbook. Companion to `02-application-rundown.md` (the definitive spec) and `03-building-with-claude.md` (the build method). Read those first; this document only describes what changes. This document supersedes both `04-guided-journal-pivot.md` (template chips) and `04-decision-journal-pivot.md` (the decision/forecast split) — see §6 for why each was cut.*
 
 > **Note on version naming.** The shipped releases are already labelled v1 (launch) and v2 (the diagnostic release), both of which went out together in Session 16. To avoid collisions in commit messages and CLAUDE.md, refer to this work as **the journal reframe** in the repo, never as "v2". Session numbering continues from 16; this runbook replaces the previously-planned v3 sessions (Wilson error bars, windowed Murphy), which are shelved — see §6.
+>
+> **Note on product naming.** The product is now **Ivyra**. It carried placeholder names during development — **Caliber**, then **Calra**, then **Marne** — all retired in favour of Ivyra; any of those names elsewhere in the history refers to today's Ivyra. This note is the one place that history is preserved.
 
 ---
 
@@ -122,7 +124,7 @@ One commit: `Reframe capture and resolve as journal entries; report calibration,
 
 ### ▶ SESSION 18 — prep (~20–30 min, one prompt)
 
-*Small but blocking: the seeded demo account has no way to log in (the seed script creates `demo@caliber.app` with a password, but the login page only offers magic link), and every evidence step in Sessions 19–20 depends on that account working.*
+*Small but blocking: the seeded demo account has no way to log in (the seed script creates `demo@ivyra.app` with a password, but the login page only offers magic link), and every evidence step in Sessions 19–20 depends on that account working.*
 
 **Setup:** `cd /Users/Shiv/Desktop/projects/decision_calibrator` → replace the untracked `docs/04-decision-journal-pivot.md` with this file as `docs/04-journal-reframe.md` → `claude` → `/clear` → `/model sonnet` → **Shift+Tab** (plan mode).
 
@@ -133,12 +135,12 @@ One commit: `Reframe capture and resolve as journal entries; report calibration,
 > Three housekeeping items, no product changes:
 >
 > 1. Add docs/04-journal-reframe.md to CLAUDE.md's doc list (it is already on disk; confirm docs/04-decision-journal-pivot.md and docs/04-guided-journal-pivot.md are gone) and stage it for this commit. Stage files explicitly by name — do not use `git add -A`.
-> 2. The seed script creates demo@caliber.app with a password, but the login page only offers magic link, so the demo account cannot actually be used. Fix this with a **dev-only password form**: on the login page, render an email+password fallback only when NODE_ENV is development, wired to Supabase password auth. Production builds must not render it or ship its code path to the client bundle. Do not change magic-link behaviour. Add a test that the password form component is absent from a production render.
+> 2. The seed script creates demo@ivyra.app with a password, but the login page only offers magic link, so the demo account cannot actually be used. Fix this with a **dev-only password form**: on the login page, render an email+password fallback only when NODE_ENV is development, wired to Supabase password auth. Production builds must not render it or ship its code path to the client bundle. Do not change magic-link behaviour. Add a test that the password form component is absent from a production render.
 > 3. Append a **Git rules** heading to CLAUDE.md with exactly: "Stage files explicitly by name; never `git add -A`. Destructive git commands (`restore`, `reset`, `clean`, force-push) require my explicit approval in the session before running."
 >
 > Propose the plan first.
 
-- **Evidence:** `npm run seed`, then log in as `demo@caliber.app` on localhost. This login gates every evidence step that follows — do not proceed until it works.
+- **Evidence:** `npm run seed`, then log in as `demo@ivyra.app` on localhost. This login gates every evidence step that follows — do not proceed until it works.
 - **Commit:** `Commit to main with message "Add dev-only demo login, journal-reframe doc, and git rules" and push.`
 
 ---

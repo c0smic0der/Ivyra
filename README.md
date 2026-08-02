@@ -1,6 +1,6 @@
-# Marne
+# Ivyra
 
-**Find out if your gut is actually right.** Marne is an installable web app (PWA) for logging real-life predictions with a confidence percentage and a resolution date, resolving them when the date arrives, and scoring your calibration over time with proper, deterministic math — while AI works only on _your own_ accumulating data to surface your track record, diff your frozen reasoning against outcomes, and narrate the patterns.
+**Find out if your gut is actually right.** Ivyra is an installable web app (PWA) for logging real-life predictions with a confidence percentage and a resolution date, resolving them when the date arrives, and scoring your calibration over time with proper, deterministic math — while AI works only on _your own_ accumulating data to surface your track record, diff your frozen reasoning against outcomes, and narrate the patterns.
 
 ---
 
@@ -11,9 +11,9 @@ The space splits cleanly, and the middle is unclaimed:
 - **Fatebook** keeps a rigorous Brier score but captures **no reasoning** — it's manual, rationalist-coded, pre-AI.
 - **Decision Log / Decira / DecideIQ** capture reasoning and coach the decision but keep **no real score** — nothing measures whether your judgment is any good.
 
-**Marne is the combination neither side ships: a decision journal with an un-fakeable measurement core** — reasoning capture + proper scoring + AI post-mortems.
+**Ivyra is the combination neither side ships: a decision journal with an un-fakeable measurement core** — reasoning capture + proper scoring + AI post-mortems.
 
-> _"Decision Log helps you make a decision; Marne measures whether your judgment is any good — and shows you exactly where it fails."_
+> _"Decision Log helps you make a decision; Ivyra measures whether your judgment is any good — and shows you exactly where it fails."_
 
 ---
 
@@ -120,7 +120,7 @@ SUPABASE_SERVICE_ROLE_KEY=    # server-side only — never prefix NEXT_PUBLIC_
 ANTHROPIC_API_KEY=
 RESEND_API_KEY=
 CRON_SECRET=                  # guards the reminders cron route
-SITE_URL=                     # e.g. https://marne.app (used in reminder emails)
+SITE_URL=                     # e.g. https://ivyra.app (used in reminder emails)
 ADMIN_USER_ID=                # your Supabase user id — the only account that can see /admin/costs
 ```
 
@@ -135,7 +135,7 @@ npm run seed           # populate the testing account (idempotent — re-run to 
 npm run dev            # http://localhost:3000
 ```
 
-`npm run seed` populates a **private** testing/screenshot account, `demouser4132@gmail.com`, with ~40 predictions (a deliberately overconfident history, so the calibration curve, bias score, progress chart, and a post-mortem all render). It's a normal account — sign in via magic link like any other, subject to the same per-user daily AI cap, with **no** admin access. It's for local testing and demo screenshots, not public access. Re-running the seed wipes and rebuilds its predictions, so it's safe to reset any time.
+`npm run seed` populates a **private** testing/screenshot account, `demo@ivyra.app`, with ~40 predictions (a deliberately overconfident history, so the calibration curve, bias score, progress chart, and a post-mortem all render). It's a normal account — subject to the same per-user daily AI cap, with **no** admin access. Because `demo@ivyra.app` has no inbox, sign in locally via the development-only password form (the seed prints the credentials). It's for local testing and demo screenshots, not public access. Re-running the seed wipes and rebuilds its predictions and retires older demo identities, so it's safe to reset any time.
 
 **3. Tests** (scoring engine, server-action result shapes, AI-degradation paths, cost aggregation):
 

@@ -3,8 +3,8 @@ import type { MetadataRoute } from "next";
 // Served at /manifest.webmanifest (Next.js generates the route from this file).
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Marne",
-    short_name: "Marne",
+    name: "Ivyra",
+    short_name: "Ivyra",
     description:
       "Log real-life predictions, resolve them, and score your calibration over time.",
     start_url: "/dashboard",

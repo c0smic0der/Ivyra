@@ -1,10 +1,16 @@
 @AGENTS.md
-# Marne
+# Ivyra
 A web app (installable PWA) to log real-life predictions with a probability +
 resolution date, resolve them when the date arrives, and score calibration over
 time. Core principle: **the LLM narrates, deterministic code grades.** AI works
 only on the user's own data (semantic track-record matching, reasoning-vs-outcome
 post-mortems, monthly pattern insights). The AI NEVER computes a score.
+
+> **Naming.** The product is **Ivyra** — capitalized "Ivyra" in prose and UI,
+> lowercase `ivyra` where identifiers demand it. Refer to it as Ivyra in all copy
+> and commits from now on. The repo/folder/package stays `decision_calibrator` (a
+> package name and a product name are separate things). Earlier placeholder names
+> are retired; their history is recorded only in the docs/04 version-naming note.
 
 ## Stack
 Next.js (App Router, TypeScript) · Tailwind · Supabase (Postgres + Auth + RLS +

@@ -5,8 +5,8 @@ import { Card, CardLabel } from "@/components/ui/Card";
 import { DeleteAccountForm } from "./DeleteAccountForm";
 
 export const metadata = {
-  title: "Account · Marne",
-  description: "Manage your Marne account and data.",
+  title: "Account · Ivyra",
+  description: "Manage your Ivyra account and data.",
 };
 
 // UTC so the displayed join date can't drift a day either side of a timezone

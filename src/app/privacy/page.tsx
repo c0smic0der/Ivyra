@@ -1,8 +1,8 @@
 import { LegalPage, LegalSection } from "@/components/legal/LegalPage";
 
 export const metadata = {
-  title: "Privacy Policy · Marne",
-  description: "What Marne collects, where it's stored, and who processes it.",
+  title: "Privacy Policy · Ivyra",
+  description: "What Ivyra collects, where it's stored, and who processes it.",
 };
 
 const CONTACT = "demouser4132+privacy@gmail.com";
@@ -27,8 +27,8 @@ export default function PrivacyPage() {
   return (
     <LegalPage title="Privacy Policy" updated="July 24, 2026">
       <p>
-        Marne is a free, non-commercial personal project operated by an individual. This policy
-        explains what data Marne collects, where it&apos;s stored, who processes it, and the choices
+        Ivyra is a free, non-commercial personal project operated by an individual. This policy
+        explains what data Ivyra collects, where it&apos;s stored, who processes it, and the choices
         you have. It describes what the app actually does today — if that changes, this page changes
         with it. Questions: <Mail />.
       </p>
@@ -56,7 +56,7 @@ export default function PrivacyPage() {
           </li>
         </ul>
         <p>
-          Marne is free, so we don&apos;t collect payment details, and we don&apos;t use third-party
+          Ivyra is free, so we don&apos;t collect payment details, and we don&apos;t use third-party
           advertising or analytics trackers.
         </p>
       </LegalSection>
@@ -145,7 +145,7 @@ export default function PrivacyPage() {
 
       <LegalSection heading="Children">
         <p>
-          Marne isn&apos;t intended for anyone under 16. Please don&apos;t use it if you&apos;re
+          Ivyra isn&apos;t intended for anyone under 16. Please don&apos;t use it if you&apos;re
           younger (see our Terms).
         </p>
       </LegalSection>

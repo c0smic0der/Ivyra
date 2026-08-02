@@ -83,7 +83,7 @@ body {
 }
 
 /* --- Landing-page motion (subtle; disabled for reduced-motion users) --- */
-@keyframes marne-fade-up {
+@keyframes ivyra-fade-up {
   from {
     opacity: 0;
     transform: translateY(14px);
@@ -94,13 +94,13 @@ body {
   }
 }
 
-@keyframes marne-draw {
+@keyframes ivyra-draw {
   to {
     stroke-dashoffset: 0;
   }
 }
 
-@keyframes marne-grow-x {
+@keyframes ivyra-grow-x {
   from {
     transform: scaleX(0);
   }
@@ -110,22 +110,22 @@ body {
 }
 
 .animate-fade-up {
-  animation: marne-fade-up 0.6s ease-out both;
+  animation: ivyra-fade-up 0.6s ease-out both;
 }
 
 .animate-draw {
   stroke-dasharray: var(--draw-len, 300);
   stroke-dashoffset: var(--draw-len, 300);
-  animation: marne-draw 1.6s ease-out 0.3s forwards;
+  animation: ivyra-draw 1.6s ease-out 0.3s forwards;
 }
 
 .animate-grow-x {
   transform-origin: left;
-  animation: marne-grow-x 1s ease-out 0.2s both;
+  animation: ivyra-grow-x 1s ease-out 0.2s both;
 }
 
 /* Quick, quiet fade for swapping the focused chart on /insights. */
-@keyframes marne-tab-in {
+@keyframes ivyra-tab-in {
   from {
     opacity: 0;
     transform: translateY(6px);
@@ -137,12 +137,12 @@ body {
 }
 
 .animate-tab-in {
-  animation: marne-tab-in 0.22s ease-out both;
+  animation: ivyra-tab-in 0.22s ease-out both;
 }
 
 /* Brief landing highlight when a resolution card is deep-linked/focused. The
    accent border (applied alongside) carries the cue for reduced-motion users. */
-@keyframes marne-card-highlight {
+@keyframes ivyra-card-highlight {
   from {
     background-color: var(--color-accent-tint);
   }
@@ -152,7 +152,7 @@ body {
 }
 
 .animate-card-highlight {
-  animation: marne-card-highlight 1.8s ease-out both;
+  animation: ivyra-card-highlight 1.8s ease-out both;
 }
 
 @media (prefers-reduced-motion: reduce) {

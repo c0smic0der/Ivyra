@@ -78,12 +78,12 @@ function SignInModal({
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
-        aria-label="Sign in to Marne"
+        aria-label="Sign in to Ivyra"
       >
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 className="font-wordmark text-xl font-semibold tracking-tight text-ink">
-              Sign in to Marne<span className="text-accent">.</span>
+              Sign in to Ivyra<span className="text-accent">.</span>
             </h2>
             <p className="mt-1 text-sm text-ink-secondary">
               We&apos;ll email you a magic link — no password to remember.

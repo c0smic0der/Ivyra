@@ -136,7 +136,7 @@ const EVIDENCE: { headline: string; body: React.ReactNode; cite: string; href: s
         A 2025 experiment found that showing people their calibration score and an
         over/under-confidence readout{" "}
         <span className="font-medium text-ink">did not, on its own, improve their calibration</span>.
-        A bare number doesn&apos;t teach — which is exactly why Marne never stops at one.
+        A bare number doesn&apos;t teach — which is exactly why Ivyra never stops at one.
       </>
     ),
     cite: "Martin & Mandel — Futures & Foresight Science (2025)",
@@ -176,7 +176,7 @@ export default async function Home({
       <header className="sticky top-0 z-10 border-b border-border bg-canvas/80 backdrop-blur-md">
         <div className="mx-auto flex h-20 w-full max-w-5xl items-center justify-between gap-4 px-6">
           <span className="font-wordmark text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
-            Marne<span className="text-accent">.</span>
+            Ivyra<span className="text-accent">.</span>
           </span>
           <div className="flex flex-col items-end gap-1.5">
             <div className="flex items-center gap-4 sm:gap-5">
@@ -224,7 +224,7 @@ export default async function Home({
         <section className="w-full px-6 py-16">
           <div className="mx-auto max-w-3xl text-center">
             <p className="text-xl font-medium leading-relaxed text-ink sm:text-2xl">
-              Marne measures whether your confidence means what you think it does — and shows you
+              Ivyra measures whether your confidence means what you think it does — and shows you
               exactly where it doesn&apos;t.
             </p>
           </div>
@@ -243,7 +243,7 @@ export default async function Home({
                 Turn &ldquo;I&apos;m pretty sure&rdquo; into a number you can check
               </h2>
               <p className="mt-4 text-base leading-relaxed text-ink-secondary">
-                Marne counts how often your predictions actually come true at each confidence level.
+                Ivyra counts how often your predictions actually come true at each confidence level.
                 So &ldquo;I&apos;m 85% sure&rdquo; stops being a feeling and becomes a frequency — one
                 you can hold up against reality, call after call.
               </p>
@@ -338,7 +338,7 @@ export default async function Home({
                 Your own track record, at the moment you predict
               </h2>
               <p className="mt-4 text-base leading-relaxed text-ink-secondary">
-                As you write a new entry, Marne finds the calls you&apos;ve made like it before and
+                As you write a new entry, Ivyra finds the calls you&apos;ve made like it before and
                 shows how they actually turned out — a plain frequency, surfaced before you lock in
                 your confidence. It states what happened and stops there.
               </p>
@@ -407,7 +407,7 @@ export default async function Home({
                 Built on what the research shows works
               </h2>
               <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-ink-secondary">
-                The loop Marne runs — make a call, see what happens, get a real score, adjust — is one
+                The loop Ivyra runs — make a call, see what happens, get a real score, adjust — is one
                 of the most studied ways to improve calibration. A few of the findings we built on:
               </p>
             </div>
@@ -434,7 +434,7 @@ export default async function Home({
             <p className="mx-auto mt-8 max-w-2xl text-center text-sm text-ink-tertiary">
               These are findings about calibration in general, not a promise about your results. We
               lean on the mechanism the evidence supports — and because a bare score doesn&apos;t
-              teach on its own, Marne pairs every number with plain-language interpretation.
+              teach on its own, Ivyra pairs every number with plain-language interpretation.
             </p>
           </div>
         </section>

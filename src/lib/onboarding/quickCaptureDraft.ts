@@ -5,7 +5,7 @@
 // content never appears in URLs or logs. Instead the draft rides sessionStorage
 // and the navigation target is a bare path with no query string.
 
-export const QUICK_DRAFT_KEY = "marne:quickCaptureDraft";
+export const QUICK_DRAFT_KEY = "ivyra:quickCaptureDraft";
 
 /** The capture route the quick-capture box navigates to — deliberately no query
  *  string, so the URL never carries prediction content. */

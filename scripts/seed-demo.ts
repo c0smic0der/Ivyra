@@ -1,21 +1,23 @@
-// Seeds a private testing/screenshot account (demouser4132@gmail.com — a real
-// mailbox, so magic-link login works like any account) with a full, believable
-// calibration story: ~35 resolved predictions across every category and
-// reasoning type, laddered over Feb–Jul 2026 with a deliberately OVERCONFIDENT
-// profile (actual frequency sags below stated confidence in every decile, so
-// the curve dips below the diagonal and the bias score reads positive), 3 recent
-// resolved rows carrying hand-written post-mortems that match the real
-// diff-engine constraints, plus 5 open predictions (2 due today for a live
-// resolve + streamed post-mortem, 3 upcoming) — ~40 predictions total.
+// Seeds a private testing/screenshot account (demo@ivyra.app) with a full,
+// believable calibration story: ~35 resolved predictions across every category
+// and reasoning type, laddered over Feb–Jul 2026 with a deliberately
+// OVERCONFIDENT profile (actual frequency sags below stated confidence in every
+// decile, so the curve dips below the diagonal and the bias score reads
+// positive), 3 recent resolved rows carrying hand-written post-mortems that match
+// the real diff-engine constraints, plus 5 open predictions (2 due today for a
+// live resolve + streamed post-mortem, 3 upcoming) — ~40 predictions total.
 //
-// Auth: this app is magic-link only. The user is created with email_confirm:true
-// and NO password (there is no password login path, by design). The account is
-// a normal user — same per-user daily AI cap, NO admin access (ADMIN_USER_ID
-// stays the owner's id only). Not public: no "view demo" entry point.
+// Auth: demo@ivyra.app isn't a real inbox, so it logs in LOCALLY via the
+// development-only password form (src/components/auth/DevPasswordSignIn.tsx),
+// with the password set below (reset each run). email_confirm:true is set so the
+// account is usable immediately. It's a normal user — same per-user daily AI cap,
+// NO admin access (ADMIN_USER_ID stays the owner's id only). Not public.
 //
-// Idempotent: wipes the demo account's predictions / user_stats / ai_calls and
-// rebuilds from scratch, so re-running resets it any time. Also deletes the
-// legacy demo@caliber.app account (created by an earlier password-based seed).
+// Idempotent: wipes demo@ivyra.app's predictions / user_stats / ai_calls and
+// rebuilds from scratch, so re-running resets it any time. It also retires older
+// demo identities so a re-run never leaves duplicate demo users: it deletes the
+// legacy demo@caliber.app account outright, and clears the seeded data off the
+// previous demo mailbox (demouser4132@gmail.com) while keeping that real account.
 //
 // Usage: npm run seed   (loads .env.local; needs DATABASE_URL,
 //   NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
@@ -25,13 +27,18 @@ config({ path: ".env.local" });
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-const DEMO_EMAIL = "demouser4132@gmail.com";
-// Legacy account from an earlier (mistaken) password-based seed — removed below.
-const LEGACY_DEMO_EMAIL = "demo@caliber.app";
+const DEMO_EMAIL = "demo@ivyra.app";
+// Retired demo identities to remove entirely (auth user + data) so a re-run never
+// leaves duplicate demo users. demo@caliber.app was an earlier password-based seed.
+const RETIRED_DEMO_EMAILS = ["demo@caliber.app"];
+// The previous seed populated this real mailbox as the demo. Keep the account
+// (it's a real signup) but strip its seeded data so it doesn't duplicate the new
+// demo's rows — the seeded story now lives solely under DEMO_EMAIL.
+const MIGRATE_OFF_EMAIL = "demouser4132@gmail.com";
 // A password is set on the demo account so it can be logged into LOCALLY via the
-// development-only password form (src/components/auth/DevPasswordSignIn.tsx) —
-// the hosted flow stays magic-link only. Overridable via env for a private value.
-const DEMO_PASSWORD = process.env.DEMO_LOGIN_PASSWORD ?? "marne-demo-dev";
+// development-only password form. demo@ivyra.app has no inbox, so this is its only
+// sign-in path. Overridable via env for a private value.
+const DEMO_PASSWORD = process.env.DEMO_LOGIN_PASSWORD ?? "ivyra-demo-dev";
 
 const CATEGORIES = ["work", "health", "relationships", "money", "self"] as const;
 const REASONING_TYPES = [
@@ -344,16 +351,26 @@ async function main() {
     await db.delete(schema.aiCalls).where(eq(schema.aiCalls.userId, userId));
   }
 
-  // 1. Remove the legacy password-based demo@caliber.app account entirely —
-  //    its data AND the orphaned auth user — so nothing is left behind.
-  const legacy = await findUserByEmail(admin, LEGACY_DEMO_EMAIL);
-  if (legacy) {
-    await purgeUserData(legacy.id);
-    const { error: delErr } = await admin.auth.admin.deleteUser(legacy.id);
-    if (delErr) throw delErr;
-    console.log(`Removed legacy account ${LEGACY_DEMO_EMAIL} (${legacy.id}) and its data.`);
-  } else {
-    console.log(`No legacy ${LEGACY_DEMO_EMAIL} account to remove.`);
+  // 1a. Remove retired demo identities entirely (data AND the auth user), so a
+  //     re-run never leaves a second, stale demo account behind.
+  for (const email of RETIRED_DEMO_EMAILS) {
+    const retired = await findUserByEmail(admin, email);
+    if (retired) {
+      await purgeUserData(retired.id);
+      const { error: delErr } = await admin.auth.admin.deleteUser(retired.id);
+      if (delErr) throw delErr;
+      console.log(`Removed retired demo account ${email} (${retired.id}) and its data.`);
+    } else {
+      console.log(`No retired ${email} account to remove.`);
+    }
+  }
+
+  // 1b. Migrate off the previous demo mailbox: keep the real account, but strip
+  //     the seeded data so the demo story doesn't exist in two places at once.
+  const migrateOff = await findUserByEmail(admin, MIGRATE_OFF_EMAIL);
+  if (migrateOff) {
+    await purgeUserData(migrateOff.id);
+    console.log(`Cleared seeded data off ${MIGRATE_OFF_EMAIL} (kept the account).`);
   }
 
   // 2. Resolve the demo user (idempotent) or create it. email_confirm:true is
@@ -408,7 +425,6 @@ async function main() {
     );
   }
 
-  console.log(`Sign in with ${DEMO_EMAIL} via magic link.`);
   console.log(`Local dev password login (development only): ${DEMO_EMAIL} / ${DEMO_PASSWORD}`);
 }
 

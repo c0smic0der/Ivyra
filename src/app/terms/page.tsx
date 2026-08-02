@@ -2,8 +2,8 @@ import Link from "next/link";
 import { LegalPage, LegalSection } from "@/components/legal/LegalPage";
 
 export const metadata = {
-  title: "Terms of Service · Marne",
-  description: "The terms for using Marne, a free decision journal.",
+  title: "Terms of Service · Ivyra",
+  description: "The terms for using Ivyra, a free decision journal.",
 };
 
 const CONTACT = "demouser4132+privacy@gmail.com";
@@ -20,13 +20,13 @@ export default function TermsPage() {
   return (
     <LegalPage title="Terms of Service" updated="July 24, 2026">
       <p>
-        By using Marne you agree to these terms. If you don&apos;t agree, please don&apos;t use it.
-        Marne is a free, non-commercial personal project operated by an individual.
+        By using Ivyra you agree to these terms. If you don&apos;t agree, please don&apos;t use it.
+        Ivyra is a free, non-commercial personal project operated by an individual.
       </p>
 
-      <LegalSection heading="What Marne is — and isn't">
+      <LegalSection heading="What Ivyra is — and isn't">
         <p>
-          Marne is a tool for logging real-life predictions, resolving them when the date arrives,
+          Ivyra is a tool for logging real-life predictions, resolving them when the date arrives,
           and tracking how well-calibrated your confidence is over time. It is a self-reflection and
           journaling tool. It is{" "}
           <span className="text-ink">
@@ -38,13 +38,13 @@ export default function TermsPage() {
       </LegalSection>
 
       <LegalSection heading="Eligibility">
-        <p>You must be at least 16 years old to use Marne.</p>
+        <p>You must be at least 16 years old to use Ivyra.</p>
       </LegalSection>
 
       <LegalSection heading="Your content">
         <p>
           You keep ownership of everything you write, and you&apos;re responsible for what you log. By
-          using Marne you give us permission to store and process your content in order to operate the
+          using Ivyra you give us permission to store and process your content in order to operate the
           app, including sharing limited data with the service providers described in our{" "}
           <Link href="/privacy" className="text-accent hover:underline">
             Privacy Policy
@@ -56,7 +56,7 @@ export default function TermsPage() {
 
       <LegalSection heading="AI-generated content">
         <p>
-          Marne uses AI to narrate patterns in your own data. Your calibration scores are calculated
+          Ivyra uses AI to narrate patterns in your own data. Your calibration scores are calculated
           by deterministic code, but AI-written insights and post-mortems can be incomplete or wrong.
           Treat them as prompts for reflection, not as facts or advice.
         </p>
@@ -71,7 +71,7 @@ export default function TermsPage() {
 
       <LegalSection heading="Availability">
         <p>
-          Marne is provided free of charge, &ldquo;as is&rdquo; and &ldquo;as available.&rdquo; We may
+          Ivyra is provided free of charge, &ldquo;as is&rdquo; and &ldquo;as available.&rdquo; We may
           change, suspend, or discontinue any part of it at any time, and we don&apos;t guarantee it
           will be uninterrupted, error-free, or that your data will never be lost — please keep your
           own records of anything important.
@@ -80,7 +80,7 @@ export default function TermsPage() {
 
       <LegalSection heading="No warranty">
         <p>
-          To the fullest extent permitted by law, Marne is provided without warranties of any kind,
+          To the fullest extent permitted by law, Ivyra is provided without warranties of any kind,
           whether express or implied, including warranties of merchantability, fitness for a
           particular purpose, accuracy, and non-infringement.
         </p>
@@ -88,10 +88,10 @@ export default function TermsPage() {
 
       <LegalSection heading="Limitation of liability">
         <p>
-          To the fullest extent permitted by law, the operator of Marne will not be liable for any
+          To the fullest extent permitted by law, the operator of Ivyra will not be liable for any
           indirect, incidental, special, or consequential damages, or for any loss of data, profits,
-          or goodwill, arising out of or relating to your use of (or inability to use) Marne. Because
-          Marne is provided free of charge, our total liability to you for any claim is limited to
+          or goodwill, arising out of or relating to your use of (or inability to use) Ivyra. Because
+          Ivyra is provided free of charge, our total liability to you for any claim is limited to
           zero.
         </p>
       </LegalSection>
@@ -106,7 +106,7 @@ export default function TermsPage() {
       <LegalSection heading="Changes to these terms">
         <p>
           We may update these terms; material changes will be reflected on this page with a new
-          &ldquo;last updated&rdquo; date. Continuing to use Marne after a change means you accept the
+          &ldquo;last updated&rdquo; date. Continuing to use Ivyra after a change means you accept the
           updated terms.
         </p>
       </LegalSection>

@@ -1,4 +1,4 @@
-# Marne — Full Application Rundown (v2, definitive)
+# Ivyra — Full Application Rundown (v2, definitive)
 
 *Top-to-bottom specification: what it is, who it's for, every screen and flow, the data model, the architecture, the AI and scoring subsystems, the stack, the real cost to build and run, the workload, and the roadblocks. Written to be handed to an engineer (you) as the blueprint for a ~2-week solo build.*
 
@@ -10,9 +10,9 @@
 
 **What it is:** a web app (installable PWA) where you log a real-life prediction in your own words, attach a confidence percentage and a resolution date, and briefly note *why* you believe it. When the date arrives the app nudges you, you record what happened, and deterministic math scores you (Brier score, calibration curve) — revealing over time whether your confidence is trustworthy. AI surfaces your own track record at the moment of prediction, writes a post-mortem diffing your frozen reasoning against reality at resolution, and extracts monthly patterns across both your scores and your reasoning styles.
 
-**The wedge (from the competitive analysis):** Fatebook keeps rigorous score but captures no reasoning and is manual, rationalist-coded, pre-AI. Decision Log / Decira / DecideIQ capture reasoning and coach decisions but keep no real score. **Marne is the unclaimed combination: a decision journal with an un-fakeable measurement core — reasoning capture + proper scoring + AI post-mortems.**
+**The wedge (from the competitive analysis):** Fatebook keeps rigorous score but captures no reasoning and is manual, rationalist-coded, pre-AI. Decision Log / Decira / DecideIQ capture reasoning and coach decisions but keep no real score. **Ivyra is the unclaimed combination: a decision journal with an un-fakeable measurement core — reasoning capture + proper scoring + AI post-mortems.**
 
-**The identity, in one sentence:** *"Decision Log helps you make a decision; Marne measures whether your confidence means what you think it does — and shows you exactly where it doesn't."*
+**The identity, in one sentence:** *"Decision Log helps you make a decision; Ivyra measures whether your confidence means what you think it does — and shows you exactly where it doesn't."*
 
 **The engineering thesis you're demonstrating:** **the LLM narrates, deterministic code grades.** Every number that judges the user (Brier, curve, hit rates) is exact math the AI never touches. The AI works only on the user's own accumulating corpus: semantic matching against their history, diffing their pre-outcome reasoning against outcomes, and clustering their reasoning styles. Guardrailed, cost-capped, compounding. That split is the whole point and your best interview story.
 
@@ -364,4 +364,4 @@ Predictions and reasoning about one's job, relationships, and money are **sensit
 - **A short writeup** (blog/LinkedIn) explaining calibration, the frozen-reasoning post-mortem idea, and the guardrailed design.
 - Interview talking points ready: proper scoring rules and Murphy's decomposition — *applied and phased*: v1 ships the Brier layer (score, rolling progress), v2 ships the diagnostic layer (the curve shows reliability, the Boldness gauge shows resolution, the identity `Brier = U − Res + Rel` is asserted in the test suite, Wilson bars quantify trust per dot); the same-Brier-opposite-coaching diagnostic (hedger vs. miscalibrated); the AI/deterministic split; why AI belongs on the user's data rather than at capture; embeddings + pgvector for the track-record feature; per-request cost observability; the 2026 forecasting research context.
 
-*Marne is a small, sharp, honest product: a decision journal with an un-fakeable measurement core, AI applied only where the user is genuinely blind, and every scored number produced by deterministic, tested code. That combination — and the documented reasoning behind every design cut — is exactly the shape that reads as "senior engineer with current market judgment," which is the entire point.*
+*Ivyra is a small, sharp, honest product: a decision journal with an un-fakeable measurement core, AI applied only where the user is genuinely blind, and every scored number produced by deterministic, tested code. That combination — and the documented reasoning behind every design cut — is exactly the shape that reads as "senior engineer with current market judgment," which is the entire point.*

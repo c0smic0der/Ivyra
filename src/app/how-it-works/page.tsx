@@ -12,7 +12,7 @@ import { BoldnessDemo } from "./BoldnessDemo";
 import { MarkSeen } from "./MarkSeen";
 
 export const metadata = {
-  title: "How it works · Marne",
+  title: "How it works · Ivyra",
   description: HOW_IT_WORKS.metaDescription,
 };
 

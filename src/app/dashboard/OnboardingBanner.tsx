@@ -19,7 +19,7 @@ export function OnboardingBanner({ hasAnyPrediction }: { hasAnyPrediction: boole
         <p className="text-ink">
           New here?{" "}
           <Link href="/how-it-works" className="font-medium text-accent hover:underline">
-            See how Marne scores your calibration →
+            See how Ivyra scores your calibration →
           </Link>
         </p>
         <Link
