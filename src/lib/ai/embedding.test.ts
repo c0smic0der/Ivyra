@@ -5,6 +5,7 @@ import {
   embedTextWithUsage,
   OPENAI_EMBEDDING_MODEL,
 } from "@/lib/ai/embedding";
+import { POSTMORTEM_EXCERPT_CHAR_BUDGET } from "@/lib/ai/postmortemCore";
 
 // A well-formed OpenAI embeddings response fake. `dims` lets a test produce a
 // wrong-length vector to exercise the shape guard.
@@ -52,6 +53,20 @@ describe("embedTextWithUsage — happy path", () => {
 
     const body = JSON.parse((fetchImpl.mock.calls[0][1] as RequestInit).body as string);
     expect(body.input).toBe("ship by Friday");
+  });
+
+  it("caps text and reasoning to the post-mortem excerpt budget before embedding", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "sk-test");
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(okResponse(10));
+
+    const bigText = "T".repeat(POSTMORTEM_EXCERPT_CHAR_BUDGET + 500);
+    const bigReasoning = "R".repeat(POSTMORTEM_EXCERPT_CHAR_BUDGET + 500);
+    await embedTextWithUsage(bigText, bigReasoning, fetchImpl);
+
+    const body = JSON.parse((fetchImpl.mock.calls[0][1] as RequestInit).body as string);
+    // Each field clipped to the budget and marked with an ellipsis, joined by \n\n.
+    const clip = (ch: string) => ch.repeat(POSTMORTEM_EXCERPT_CHAR_BUDGET) + "…";
+    expect(body.input).toBe(`${clip("T")}\n\n${clip("R")}`);
   });
 });
 

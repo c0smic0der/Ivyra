@@ -24,11 +24,10 @@ import { config } from "dotenv";
 config({ path: ".env.local" });
 
 import { createInterface } from "node:readline/promises";
-import { and, eq, isNull } from "drizzle-orm";
+import { isNull } from "drizzle-orm";
 import {
   embeddingCostUsd,
   EMBEDDING_INPUT_COST_PER_TOKEN,
-  embedTextWithUsage,
   OPENAI_EMBEDDING_MODEL,
 } from "../src/lib/ai/embedding";
 
@@ -96,52 +95,19 @@ async function main(): Promise<void> {
     }
   }
 
-  let embedded = 0;
-  let failed = 0;
-  let actualTokens = 0;
-
-  for (const [index, row] of rows.entries()) {
-    const position = `[${index + 1}/${rows.length}]`;
-    const start = Date.now();
-    const result = await embedTextWithUsage(row.text, row.reasoning);
-
-    if (!result) {
-      failed += 1;
-      console.log(`${position} FAILED (left null, will retry next run): ${row.text.slice(0, 60)}`);
-      continue;
-    }
-
-    const latencyMs = Date.now() - start;
-
-    // Write the vector, then log the call. Order matters for resumability: the
-    // row's embedding is set first, so a crash before logging still leaves the
-    // row done (the ai_calls row is observability, not correctness).
-    await db
-      .update(schema.predictions)
-      .set({ embedding: result.embedding })
-      .where(and(eq(schema.predictions.id, row.id), isNull(schema.predictions.embedding)));
-
-    await db.insert(schema.aiCalls).values({
-      userId: row.userId,
-      predictionId: row.id,
-      purpose: "backfill_embed",
-      model: OPENAI_EMBEDDING_MODEL,
-      inputTokens: result.inputTokens,
-      outputTokens: 0,
-      costUsd: embeddingCostUsd(result.inputTokens),
-      latencyMs,
-    });
-
-    embedded += 1;
-    actualTokens += result.inputTokens;
-    console.log(`${position} embedded (${result.inputTokens} tok): ${row.text.slice(0, 60)}`);
-  }
+  // Delegate the embed → write → log loop to the shared core (backfillCore.ts),
+  // the SAME implementation the seed uses — one source of truth for the capped
+  // excerpt, the 'backfill_embed' log, and the idempotent isNull write guard.
+  const { backfillMissingEmbeddings } = await import("../src/lib/ai/backfill");
+  const { embedded, failed, tokens } = await backfillMissingEmbeddings({
+    onProgress: (line) => console.log(line),
+  });
 
   console.log(`\nDone.`);
   console.log(`  Embedded: ${embedded}`);
   console.log(`  Failed:   ${failed}${failed > 0 ? " (still null — re-run to retry)" : ""}`);
-  console.log(`  Tokens:   ${actualTokens.toLocaleString()}`);
-  console.log(`  Cost:     $${embeddingCostUsd(actualTokens)}`);
+  console.log(`  Tokens:   ${tokens.toLocaleString()}`);
+  console.log(`  Cost:     $${embeddingCostUsd(tokens)}`);
 }
 
 main()

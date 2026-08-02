@@ -80,7 +80,7 @@ export function PredictionForm({
         </details>
       </div>
 
-      <TrackRecordPanel result={trackRecordResult} />
+      <TrackRecordPanel result={trackRecordResult} confidencePercent={confidence} />
 
       <div>
         <label htmlFor="confidencePercent" className="block text-sm font-medium text-ink">

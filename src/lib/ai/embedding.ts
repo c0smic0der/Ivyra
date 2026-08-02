@@ -17,6 +17,8 @@
 // panel falls through to the static base-rate line; the post-mortem skips its
 // similar-misses cross-reference — so a null here is always safe, never an error.
 
+import { excerpt } from "@/lib/ai/postmortemCore";
+
 export const EMBEDDING_DIMENSIONS = 1536;
 export const OPENAI_EMBEDDING_MODEL = "text-embedding-3-small";
 
@@ -37,9 +39,18 @@ export interface EmbedResult {
   inputTokens: number;
 }
 
-/** The text we actually embed: prediction plus reasoning when present. */
+/**
+ * The text we actually embed: prediction plus reasoning when present, each
+ * capped to the SAME budget as the post-mortem's excerpts (`excerpt` defaults to
+ * POSTMORTEM_EXCERPT_CHAR_BUDGET). Capping bounds per-call cost/latency on the
+ * billed OpenAI call and — because the draft-time embed and the stored save-time
+ * embed now excerpt identically — keeps the two vectors comparable in the same
+ * space. Deriving the bound from the post-mortem constant (not a private copy)
+ * follows the CLAUDE.md "two paths must agree ⇒ one derives from the other" rule.
+ */
 function embedInput(text: string, reasoning: string | null): string {
-  return reasoning ? `${text}\n\n${reasoning}` : text;
+  const t = excerpt(text);
+  return reasoning ? `${t}\n\n${excerpt(reasoning)}` : t;
 }
 
 /**

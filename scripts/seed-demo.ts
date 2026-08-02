@@ -381,6 +381,25 @@ async function main() {
   console.log(
     `Inserted ${rows.length} predictions (${resolvedCount} resolved, ${openCount} open) for ${DEMO_EMAIL}.`,
   );
+
+  // 4. Backfill embeddings so the seeded rows are visible to pgvector similarity
+  //    search — otherwise the track-record panel falls back to the base rate for
+  //    the demo account. Same capped-excerpt + model path as live saves, logged
+  //    to ai_calls as 'backfill_embed'. Idempotent (embedding IS NULL): a re-run
+  //    after the purge above re-embeds the fresh rows and never double-logs. If
+  //    no OPENAI_API_KEY is set, every embed degrades to null — the seed still
+  //    succeeds, the panel just shows the base rate until a key is present.
+  const { backfillMissingEmbeddings } = await import("../src/lib/ai/backfill");
+  if (!process.env.OPENAI_API_KEY) {
+    console.log("OPENAI_API_KEY not set — skipping embedding backfill (panel will show base rates).");
+    console.log(`Embedded 0 of ${rows.length} rows.`);
+  } else {
+    const { embedded, total, failed } = await backfillMissingEmbeddings({ userId });
+    console.log(
+      `Embedded ${embedded} of ${total} rows.${failed > 0 ? ` (${failed} failed — re-run to retry)` : ""}`,
+    );
+  }
+
   console.log(`Sign in at /login with ${DEMO_EMAIL} via magic link (no password).`);
 }
 
