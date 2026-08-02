@@ -7,6 +7,7 @@ import { useTrackRecordPanel } from "./useTrackRecordPanel";
 import { buttonVariants } from "@/components/ui/button";
 import { inputClasses } from "@/components/ui/input";
 import { cx } from "@/components/ui/cx";
+import { takeQuickDraft } from "@/lib/onboarding/quickCaptureDraft";
 
 const PLACEHOLDER_EXAMPLES = [
   "The kitchen reno finishes by Aug 15",
@@ -43,6 +44,16 @@ export function PredictionForm({
     }, 4000);
     return () => clearInterval(interval);
   }, []);
+
+  // Pick up a draft handed off from the dashboard quick-capture box via
+  // sessionStorage (never the URL). Only when the form isn't already prefilled by
+  // a template or explicit initial text. One-shot: takeQuickDraft clears it.
+  useEffect(() => {
+    if (initialText) return;
+    const stashed = takeQuickDraft(sessionStorage);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time client-only seed on mount
+    if (stashed) setText(stashed);
+  }, [initialText]);
 
   const secondReasoningLabel =
     predictionKind === "self" ? "What's your plan?" : "What would change your mind?";

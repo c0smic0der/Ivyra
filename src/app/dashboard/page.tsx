@@ -3,13 +3,13 @@ import { requireUser } from "@/lib/auth/requireUser";
 import { countDueForResolution, queryJournal } from "@/lib/journal/journalQuery";
 import { Card } from "@/components/ui/Card";
 import { buttonVariants } from "@/components/ui/button";
-import { inputClasses } from "@/components/ui/input";
 import { Header } from "@/components/Header";
 import { HowItWorksGate } from "@/components/HowItWorksGate";
 import { InstallPrompt } from "./InstallPrompt";
 import { OnboardingBanner } from "./OnboardingBanner";
 import { ResolveStrip } from "./ResolveStrip";
 import { JournalTimeline } from "./JournalTimeline";
+import { QuickCapture } from "./QuickCapture";
 
 // The home is a reverse-chronological journal timeline (docs/04-journal-reframe
 // §3.2). This Server Component owns every read: it authenticates, scopes the
@@ -48,19 +48,9 @@ export default async function DashboardPage() {
           {/* The due-for-resolution function, reduced to one dismissible strip. */}
           <ResolveStrip count={dueCount} />
 
-          {/* Quick capture — a fast on-ramp into the real capture flow, not a fork. */}
-          <form action="/predictions/new" method="GET" className="mt-6 flex flex-col gap-2 sm:flex-row">
-            <input
-              type="text"
-              name="draft"
-              required
-              placeholder="What do you think will happen?"
-              className={inputClasses("flex-1")}
-            />
-            <button type="submit" className={buttonVariants("primary")}>
-              Log it →
-            </button>
-          </form>
+          {/* Quick capture — a fast on-ramp into the real capture flow, not a fork.
+              The draft is handed off via sessionStorage, never the URL. */}
+          <QuickCapture />
 
           <InstallPrompt hasAnyPrediction={hasAnyEntry} />
 
