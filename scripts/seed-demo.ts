@@ -28,6 +28,10 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 const DEMO_EMAIL = "demouser4132@gmail.com";
 // Legacy account from an earlier (mistaken) password-based seed — removed below.
 const LEGACY_DEMO_EMAIL = "demo@caliber.app";
+// A password is set on the demo account so it can be logged into LOCALLY via the
+// development-only password form (src/components/auth/DevPasswordSignIn.tsx) —
+// the hosted flow stays magic-link only. Overridable via env for a private value.
+const DEMO_PASSWORD = process.env.DEMO_LOGIN_PASSWORD ?? "marne-demo-dev";
 
 const CATEGORIES = ["work", "health", "relationships", "money", "self"] as const;
 const REASONING_TYPES = [
@@ -352,17 +356,21 @@ async function main() {
     console.log(`No legacy ${LEGACY_DEMO_EMAIL} account to remove.`);
   }
 
-  // 2. Resolve the demo user (idempotent) or create it. Magic-link only: no
-  //    password is set — email_confirm:true is enough for magic-link sign-in.
+  // 2. Resolve the demo user (idempotent) or create it. email_confirm:true is
+  //    enough for magic-link sign-in; a password is also set so the dev-only
+  //    password form can log this account in locally (reset each run so it's
+  //    always the known value).
   let userId: string;
   const existing = await findUserByEmail(admin, DEMO_EMAIL);
   if (existing) {
     userId = existing.id;
+    await admin.auth.admin.updateUserById(userId, { password: DEMO_PASSWORD });
     console.log(`Reusing existing demo user ${userId} (${DEMO_EMAIL}).`);
   } else {
     const { data: created, error: createErr } = await admin.auth.admin.createUser({
       email: DEMO_EMAIL,
       email_confirm: true,
+      password: DEMO_PASSWORD,
     });
     if (createErr || !created.user) throw createErr ?? new Error("createUser returned no user");
     userId = created.user.id;
@@ -400,7 +408,8 @@ async function main() {
     );
   }
 
-  console.log(`Sign in at /login with ${DEMO_EMAIL} via magic link (no password).`);
+  console.log(`Sign in with ${DEMO_EMAIL} via magic link.`);
+  console.log(`Local dev password login (development only): ${DEMO_EMAIL} / ${DEMO_PASSWORD}`);
 }
 
 main()

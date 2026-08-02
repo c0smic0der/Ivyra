@@ -12,6 +12,7 @@ import { createClient } from "@/lib/supabase/client";
 import { buttonVariants } from "@/components/ui/button";
 import { inputClasses } from "@/components/ui/input";
 import { cx } from "@/components/ui/cx";
+import { DevPasswordSignIn, devSignInEnabled } from "./DevPasswordSignIn";
 
 interface SignInContextValue {
   open: (error?: string | null) => void;
@@ -124,6 +125,10 @@ function SignInModal({
             {error && <p className="text-sm text-danger">{error}</p>}
           </form>
         )}
+
+        {/* Development only: folds to `false && …` in a production build, so this
+            never renders in prod and is tree-shaken from the client bundle. */}
+        {devSignInEnabled() && <DevPasswordSignIn />}
 
         <p className="mt-5 text-center text-xs text-ink-tertiary">
           By continuing you agree to our{" "}
