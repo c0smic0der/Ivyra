@@ -313,6 +313,21 @@ export function bandLabel(low: number, high: number): string {
 }
 
 /**
+ * The record view is deep-linked as /insights?resolution=<id>. Only focus the
+ * card when the id belongs to THIS user — `ownedIds` is the caller's already
+ * user-scoped resolution set. A foreign or opaque uuid focuses nothing and
+ * reveals nothing, so the record view can never surface another user's entry.
+ */
+export function resolveFocusId(
+  ownedIds: Iterable<string>,
+  requested: string | null | undefined,
+): string | null {
+  if (!requested) return null;
+  for (const id of ownedIds) if (id === requested) return requested;
+  return null;
+}
+
+/**
  * Calibration-curve dot → confidence-band filter. Clicking a dot narrows the
  * history to the predictions in that decile — same band the dot aggregates.
  */

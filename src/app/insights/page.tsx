@@ -15,7 +15,7 @@ import {
   type InsightPrediction,
 } from "@/lib/insights/scopedInsightView";
 import { queryFullHistory } from "@/lib/insights/historyQuery";
-import { EMPTY_PARAMS } from "@/lib/insights/historyView";
+import { EMPTY_PARAMS, resolveFocusId } from "@/lib/insights/historyView";
 import { buildVerdict } from "@/lib/insights/verdict";
 import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/Card";
@@ -135,7 +135,10 @@ export default async function InsightsPage({
   // /insights?resolution=<id> focuses that card. Enforce ownership here — only
   // pass the id through if it's one of THIS user's rows, so a foreign/opaque uuid
   // focuses nothing and reveals nothing.
-  const focusId = focusParam && rows.some((r) => r.id === focusParam) ? focusParam : null;
+  const focusId = resolveFocusId(
+    rows.map((r) => r.id),
+    focusParam,
+  );
 
   return (
     <>

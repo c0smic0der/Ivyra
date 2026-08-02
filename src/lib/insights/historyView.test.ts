@@ -12,6 +12,7 @@ import {
   progressPointFilter,
   progressRangeFilter,
   type RawHistoryRow,
+  resolveFocusId,
   runHistoryQuery,
   sortRows,
 } from "./historyView";
@@ -282,5 +283,28 @@ describe("filter-state predicates", () => {
     expect(hasChartSelection(EMPTY_FILTERS)).toBe(false);
     expect(hasChartSelection({ ...EMPTY_FILTERS, selectionIds: [] })).toBe(true);
     expect(hasChartSelection({ ...EMPTY_FILTERS, confidenceHigh: 0.8 })).toBe(true);
+  });
+});
+
+describe("resolveFocusId — the record view is scoped to the authenticated user", () => {
+  // `ownedIds` is always the caller's user-scoped resolution set.
+  const owned = ["mine-a", "mine-b", "mine-c"];
+
+  it("passes an id the user owns", () => {
+    expect(resolveFocusId(owned, "mine-b")).toBe("mine-b");
+  });
+
+  it("returns null for another user's id, so it focuses/reveals nothing", () => {
+    expect(resolveFocusId(owned, "someone-elses-uuid")).toBeNull();
+  });
+
+  it("returns null for a missing or empty deep-link param", () => {
+    expect(resolveFocusId(owned, null)).toBeNull();
+    expect(resolveFocusId(owned, undefined)).toBeNull();
+    expect(resolveFocusId(owned, "")).toBeNull();
+  });
+
+  it("never focuses when the user has no resolutions at all", () => {
+    expect(resolveFocusId([], "any-id")).toBeNull();
   });
 });
