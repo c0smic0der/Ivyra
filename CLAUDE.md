@@ -44,3 +44,6 @@ where user-facing) · Vercel (+ Cron) · Resend · Recharts
   API keys server-side only.
 - Write tests for scoring logic and server actions. Run `npm test` before
   declaring any task done. Show evidence (test output), don't claim success.
+
+## Copy rules
+> **Calibration only, never merit.** Every user-facing sentence reports the relationship between stated confidence and observed frequency. The app never evaluates whether a decision, commitment, or opinion was good, wise, or correct in itself. Banned phrasings: "good call", "bad call", "you were right/wrong to", "you should have", "better decision", "poor judgment". Permitted: "you said 85%, it happened 38% of the time", "you flagged this risk and still went to 85%", "your high-confidence calls land less often than you claim." When in doubt, state a frequency and stop.

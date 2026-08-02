@@ -12,7 +12,7 @@
 
 **The wedge (from the competitive analysis):** Fatebook keeps rigorous score but captures no reasoning and is manual, rationalist-coded, pre-AI. Decision Log / Decira / DecideIQ capture reasoning and coach decisions but keep no real score. **Marne is the unclaimed combination: a decision journal with an un-fakeable measurement core — reasoning capture + proper scoring + AI post-mortems.**
 
-**The identity, in one sentence:** *"Decision Log helps you make a decision; Marne measures whether your judgment is any good — and shows you exactly where it fails."*
+**The identity, in one sentence:** *"Decision Log helps you make a decision; Marne measures whether your confidence means what you think it does — and shows you exactly where it doesn't."*
 
 **The engineering thesis you're demonstrating:** **the LLM narrates, deterministic code grades.** Every number that judges the user (Brier, curve, hit rates) is exact math the AI never touches. The AI works only on the user's own accumulating corpus: semantic matching against their history, diffing their pre-outcome reasoning against outcomes, and clustering their reasoning styles. Guardrailed, cost-capped, compounding. That split is the whole point and your best interview story.
 
@@ -119,6 +119,7 @@ Landing → Sign up/in → Onboarding (2 screens) → Dashboard
 - **Windowed Murphy** in the monthly insight ("recent 40 vs. lifetime: boldness up, honesty held"; requires 40–50 resolved in-window — a power-user reward, not a dashboard fixture).
 - **Wilson error bars** on the calibration curve (per-dot whiskers replacing the blunt per-bucket lock; "bar crosses the diagonal = too early to call"). Unit tests must include the 3-of-3 non-collapse case.
 - Monthly AI insight w/ reasoning-style analysis (v1 ships a simple templated stats summary instead).
+- **Scoped AI insight** — The pairing is deliberate: the decomposition produces the finding, the insight reports it — shipping either alone gives you a number nobody can interpret, or a narrative with nothing behind it.
 
 **v2+ / later:**
 - LLM-proposed reference classes for unusual predictions (static lookup table only in v1).
@@ -363,4 +364,4 @@ Predictions and reasoning about one's job, relationships, and money are **sensit
 - **A short writeup** (blog/LinkedIn) explaining calibration, the frozen-reasoning post-mortem idea, and the guardrailed design.
 - Interview talking points ready: proper scoring rules and Murphy's decomposition — *applied and phased*: v1 ships the Brier layer (score, rolling progress), v2 ships the diagnostic layer (the curve shows reliability, the Boldness gauge shows resolution, the identity `Brier = U − Res + Rel` is asserted in the test suite, Wilson bars quantify trust per dot); the same-Brier-opposite-coaching diagnostic (hedger vs. miscalibrated); the AI/deterministic split; why AI belongs on the user's data rather than at capture; embeddings + pgvector for the track-record feature; per-request cost observability; the 2026 forecasting research context.
 
-*Marne is a small, sharp, honest product: a decision journal with an un-fakeable measurement core, AI applied only where the user is genuinely blind, and every judging number produced by deterministic, tested code. That combination — and the documented reasoning behind every design cut — is exactly the shape that reads as "senior engineer with current market judgment," which is the entire point.*
+*Marne is a small, sharp, honest product: a decision journal with an un-fakeable measurement core, AI applied only where the user is genuinely blind, and every scored number produced by deterministic, tested code. That combination — and the documented reasoning behind every design cut — is exactly the shape that reads as "senior engineer with current market judgment," which is the entire point.*

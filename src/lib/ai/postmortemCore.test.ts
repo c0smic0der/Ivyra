@@ -3,6 +3,7 @@ import {
   buildPostmortemPrompt,
   consumePostmortemStream,
   isMiss,
+  POSTMORTEM_EXCERPT_CHAR_BUDGET,
   type ModelStream,
   type PostmortemInputs,
   type PostmortemStreamDeps,
@@ -60,6 +61,31 @@ describe("buildPostmortemPrompt — anchors only to user-written text", () => {
     const prompt = buildPostmortemPrompt({ ...base, planOrDisconfirm: null, outcomeNote: null });
     expect(prompt).not.toContain("What would change their mind");
     expect(prompt).not.toContain("note on what happened");
+  });
+
+  it("caps an oversized reasoning / outcome_note at the excerpt budget (truncates on input)", () => {
+    const bigReasoning = "R".repeat(POSTMORTEM_EXCERPT_CHAR_BUDGET + 500);
+    const bigNote = "N".repeat(POSTMORTEM_EXCERPT_CHAR_BUDGET + 500);
+    const prompt = buildPostmortemPrompt({ ...base, reasoning: bigReasoning, outcomeNote: bigNote });
+
+    // The full oversized fields never reach the prompt...
+    expect(prompt).not.toContain(bigReasoning);
+    expect(prompt).not.toContain(bigNote);
+    // ...only a budgeted excerpt does, marked as clipped with an ellipsis.
+    expect(prompt).toContain("R".repeat(POSTMORTEM_EXCERPT_CHAR_BUDGET) + "…");
+    expect(prompt).toContain("N".repeat(POSTMORTEM_EXCERPT_CHAR_BUDGET) + "…");
+    // The reasoning line carries at most budget + label + one ellipsis char.
+    const reasoningLine = prompt.split("\n").find((l) => l.startsWith("Their reasoning:"))!;
+    expect(reasoningLine.length).toBeLessThanOrEqual(
+      "Their reasoning: ".length + POSTMORTEM_EXCERPT_CHAR_BUDGET + 1,
+    );
+  });
+
+  it("leaves an at-budget field untouched (no ellipsis added)", () => {
+    const exact = "x".repeat(POSTMORTEM_EXCERPT_CHAR_BUDGET);
+    const prompt = buildPostmortemPrompt({ ...base, reasoning: exact });
+    expect(prompt).toContain(`Their reasoning: ${exact}`);
+    expect(prompt).not.toContain(`${exact}…`);
   });
 
   it("lists similar past misses when provided", () => {

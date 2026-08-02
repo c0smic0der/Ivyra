@@ -46,7 +46,7 @@ export default async function ResolvePage({ params }: { params: Promise<{ id: st
 
             {(row.reasoning || row.planOrDisconfirm) && (
               <details className="mt-3 text-sm">
-                <summary className="cursor-pointer text-ink-secondary">Your frozen reasoning</summary>
+                <summary className="cursor-pointer text-ink-secondary">Read what you wrote</summary>
                 <div className="mt-2 flex flex-col gap-2 text-ink-secondary">
                   {row.reasoning && (
                     <p>

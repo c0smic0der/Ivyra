@@ -3,7 +3,7 @@ import { LegalPage, LegalSection } from "@/components/legal/LegalPage";
 
 export const metadata = {
   title: "Terms of Service · Marne",
-  description: "The terms for using Marne, a free calibration journal.",
+  description: "The terms for using Marne, a free decision journal.",
 };
 
 const CONTACT = "demouser4132+privacy@gmail.com";

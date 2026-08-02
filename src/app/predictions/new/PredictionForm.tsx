@@ -154,13 +154,16 @@ export function PredictionForm({
         <label htmlFor="reasoning" className="block text-sm font-medium text-ink">
           Why do you think so? <span className="text-ink-tertiary">(optional)</span>
         </label>
+        <p className="mt-1 text-sm text-ink-secondary">
+          Write as much as you want. This is the part you&apos;ll read back.
+        </p>
         <textarea
           id="reasoning"
           name="reasoning"
-          rows={2}
-          placeholder="The contractor confirmed the schedule last week."
-          className={inputClasses("mt-1")}
+          placeholder="They've been circling this for weeks and keep saying it's coming. I think they're just hedging and it'll land. Though I notice I want this to be true, so maybe I'm giving that more weight than I should…"
+          className={inputClasses("mt-2 min-h-[130px]")}
         />
+        <p className="mt-1 text-xs text-ink-tertiary">Locks when you save.</p>
       </div>
 
       <div>

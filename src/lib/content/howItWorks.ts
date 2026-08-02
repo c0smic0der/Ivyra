@@ -91,7 +91,7 @@ export const HOW_IT_WORKS = {
       {
         step: "4",
         title: "Adjust",
-        body: "Do it enough times and the pattern surfaces: where your judgment is sharp, and where your confidence runs ahead of reality. Then you recalibrate.",
+        body: "Do it enough times and the pattern surfaces: where your stated confidence matches how often things actually happen, and where it runs ahead of them. Then you recalibrate.",
       },
     ],
   },
@@ -131,7 +131,7 @@ export const HOW_IT_WORKS = {
       "**One: your numbers can be dishonest.** You say 90% and things happen 60% of the time. That's the overconfidence we've been talking about, and the curve catches it.",
       '**Two: your numbers can be empty.** Imagine answering "60%" to everything. You\'re never badly wrong — but you\'re never really saying anything either. You\'ve made yourself safe and useless.',
       "**Boldness** measures whether your confidence levels actually **tell your outcomes apart.** Do the things you call 80% really happen more often than the things you call 55%? If they do, your numbers carry information. If everything you say clusters near 50%, they don't — however honest each one looks on its own.",
-      "Good judgment is **honest and decisive at the same time:** you commit to high and low confidence when the evidence earns it, and you turn out to be right. Someone hedging everything near the middle is playing it safe and telling you nothing.",
+      "Confidence that's **honest and decisive at the same time** moves to high and low values as the evidence earns it, and those values match how often things actually happen. Confidence that stays hedged near the middle is safe but says nothing — a hedger's 80% calls land no more often than their 55% ones.",
     ],
   } satisfies Section,
 

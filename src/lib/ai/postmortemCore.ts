@@ -9,6 +9,21 @@
 import { BASELINE_BRIER, brierScore } from "@/lib/scoring";
 
 /**
+ * Hard character budget for each free-text field fed into the post-mortem
+ * prompt. The journal reframe (docs 04 §4–5) enlarges `reasoning` and
+ * `outcome_note` into full text areas with no UI length limit, so a single
+ * long entry could otherwise blow the per-call token cap. We truncate on
+ * INPUT here — never in the UI — and mark the clip. Kept as one exported
+ * constant so the embedding step (docs 04 §6, Session 19) caps identically.
+ */
+export const POSTMORTEM_EXCERPT_CHAR_BUDGET = 1500;
+
+/** Clip a free-text field to the excerpt budget, marking truncation with an ellipsis. */
+export function excerpt(text: string, budget = POSTMORTEM_EXCERPT_CHAR_BUDGET): string {
+  return text.length <= budget ? text : text.slice(0, budget) + "…";
+}
+
+/**
  * The diff-engine constraint. Kept as a stable constant so it can be
  * prompt-cached on the static system block (docs §9.7). Every rule here is an
  * eval rubric item (docs §16): claims must anchor to user text; no motives.
@@ -63,7 +78,7 @@ export function buildPostmortemPrompt(inputs: PostmortemInputs): string {
   const lines = [
     `Prediction (their words): ${inputs.predictionText}`,
     `Stated confidence: ${inputs.confidencePercent}%`,
-    `Their reasoning: ${inputs.reasoning}`,
+    `Their reasoning: ${excerpt(inputs.reasoning)}`,
   ];
 
   if (inputs.planOrDisconfirm) {
@@ -73,7 +88,7 @@ export function buildPostmortemPrompt(inputs: PostmortemInputs): string {
   lines.push(`Actual outcome: ${inputs.outcome ? "YES — it happened" : "NO — it did not happen"}`);
 
   if (inputs.outcomeNote) {
-    lines.push(`Their note on what happened: ${inputs.outcomeNote}`);
+    lines.push(`Their note on what happened: ${excerpt(inputs.outcomeNote)}`);
   }
 
   if (inputs.similarMisses.length > 0) {
