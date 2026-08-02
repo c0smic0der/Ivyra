@@ -150,11 +150,19 @@ export async function embedAndLog(
   }
   if (!result) return null;
 
-  await deps.logCall({
-    inputTokens: result.inputTokens,
-    outputTokens: 0,
-    latencyMs: now() - start,
-  });
+  // The vector is already in hand; the ai_calls insert is observability, not
+  // correctness. Swallow a logging failure so this cannot reject (the "NEVER
+  // throws" contract) — the embedding is still returned and persisted. Log only
+  // the error name, never text/reasoning (CLAUDE.md logging rule).
+  try {
+    await deps.logCall({
+      inputTokens: result.inputTokens,
+      outputTokens: 0,
+      latencyMs: now() - start,
+    });
+  } catch (error) {
+    console.error("embedAndLog: logging failed", error instanceof Error ? error.name : "UnknownError");
+  }
   return result.embedding;
 }
 
@@ -181,8 +189,13 @@ export interface EnrichPersistDeps {
  * Runs the enrich → log → embed → persist tail with graceful degradation:
  * - AI enrich failure → null category/reasoningType, 0/0 tokens logged.
  * - Embedding failure → null embedding (every consumer already null-degrades).
- * The attempt is ALWAYS logged (so the cap-count query reflects it) and the row
- * is ALWAYS persisted (so it never lingers half-enriched). Resolves, never rejects.
+ * The attempt is always LOGGED and the row is always PERSISTED on the happy
+ * path. Every step — including the logCall and persist DB writes — is guarded,
+ * so this ALWAYS RESOLVES, NEVER REJECTS (it runs inside `after()`, where a
+ * throw would become an unhandled post-response rejection). A DB failure in
+ * logCall or persist is caught and logged (error name only, never user text),
+ * not thrown: on a persist failure the row keeps its prior null-enriched state
+ * rather than lingering half-written.
  */
 export async function enrichAndPersist(
   text: string,
@@ -204,7 +217,13 @@ export async function enrichAndPersist(
     // Network/API failure: degrade. Row stays usable with null enrichment.
   }
 
-  await deps.logCall({ inputTokens, outputTokens, latencyMs: now() - start });
+  // Guarded: a failed ai_calls insert must not reject this (it runs in after()).
+  // Log the error name only — never text/reasoning (CLAUDE.md logging rule).
+  try {
+    await deps.logCall({ inputTokens, outputTokens, latencyMs: now() - start });
+  } catch (error) {
+    console.error("enrichAndPersist: logCall failed", error instanceof Error ? error.name : "UnknownError");
+  }
 
   let embedding: number[] | null = null;
   try {
@@ -215,9 +234,15 @@ export async function enrichAndPersist(
     // null-degrade, so the row is still fully usable.
   }
 
-  await deps.persist({
-    category: output?.category ?? null,
-    reasoningType: output?.reasoning_type ?? null,
-    embedding,
-  });
+  // Guarded for the same reason: on a persist failure the row keeps its prior
+  // (null-enriched) state rather than throwing out of after().
+  try {
+    await deps.persist({
+      category: output?.category ?? null,
+      reasoningType: output?.reasoning_type ?? null,
+      embedding,
+    });
+  } catch (error) {
+    console.error("enrichAndPersist: persist failed", error instanceof Error ? error.name : "UnknownError");
+  }
 }

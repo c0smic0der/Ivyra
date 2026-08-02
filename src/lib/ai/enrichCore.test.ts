@@ -159,6 +159,15 @@ describe("embedAndLog — cost logging (cap) + degradation (never blocks a save)
     expect(deps.logCall).not.toHaveBeenCalled();
   });
 
+  it("a throwing logCall is swallowed — the vector is still returned (NEVER throws)", async () => {
+    const deps = makeDeps();
+    deps.logCall.mockRejectedValue(new Error("ai_calls insert failed"));
+
+    // The embedding is already in hand; a logging DB failure must not reject.
+    await expect(embedAndLog("ship by Friday", "on track", deps)).resolves.toEqual([0.1, 0.2, 0.3]);
+    expect(deps.logCall).toHaveBeenCalledOnce();
+  });
+
   it("reports deterministic latency from the injected clock", async () => {
     const now = vi.fn<() => number>().mockReturnValueOnce(1000).mockReturnValueOnce(1250);
     const deps = makeDeps(now);
@@ -279,5 +288,22 @@ describe("enrichAndPersist — graceful degradation (AI failure never breaks the
     await enrichAndPersist("Some prediction", null, deps);
 
     expect(deps.logCall.mock.calls[0][0].latencyMs).toBe(400);
+  });
+
+  it("a throwing logCall is swallowed — still persists and never rejects", async () => {
+    const deps = makeDeps();
+    deps.logCall.mockRejectedValue(new Error("ai_calls insert failed"));
+
+    await expect(enrichAndPersist("Some prediction", null, deps)).resolves.toBeUndefined();
+    // The persist still runs even though the earlier log write threw.
+    expect(deps.persist).toHaveBeenCalledOnce();
+  });
+
+  it("a throwing persist is swallowed — resolves, never rejects (runs inside after())", async () => {
+    const deps = makeDeps();
+    deps.persist.mockRejectedValue(new Error("update failed"));
+
+    await expect(enrichAndPersist("Some prediction", null, deps)).resolves.toBeUndefined();
+    expect(deps.persist).toHaveBeenCalledOnce();
   });
 });

@@ -56,6 +56,29 @@ describe("backfillEmbeddings — happy path", () => {
     expect(order).toEqual(["persist", "log"]);
   });
 
+  it("progress lines carry the row id + index/total + status, never the prediction text", async () => {
+    const lines: string[] = [];
+    const d = deps({
+      embed: vi
+        .fn<BackfillDeps["embed"]>()
+        .mockResolvedValueOnce({ embedding: [1], inputTokens: 7 })
+        .mockResolvedValueOnce(null),
+      onProgress: (line) => lines.push(line),
+    });
+    // text is `claim id-a` / `claim id-b` (see row()); it must never reach a log line.
+    await backfillEmbeddings([row("id-a"), row("id-b", "secret reasoning")], d);
+
+    expect(lines).toEqual([
+      "[1/2] id-a embedded (7 tok)",
+      "[2/2] id-b FAILED (left null, will retry next run)",
+    ]);
+    // No prediction content (CLAUDE.md logging rule) in any progress line.
+    for (const line of lines) {
+      expect(line).not.toContain("claim");
+      expect(line).not.toContain("secret");
+    }
+  });
+
   it("handles an empty row list without touching any dep (idempotent second run)", async () => {
     const d = deps();
     const result = await backfillEmbeddings([], d);

@@ -65,7 +65,9 @@ export async function backfillEmbeddings(
 
     if (!result) {
       failed += 1;
-      deps.onProgress?.(`${position} FAILED (left null, will retry next run): ${row.text.slice(0, 60)}`);
+      // ID + index/total + status ONLY — never the prediction text/reasoning
+      // (CLAUDE.md logging rule: no user content to stdout/CI/logs).
+      deps.onProgress?.(`${position} ${row.id} FAILED (left null, will retry next run)`);
       continue;
     }
 
@@ -78,7 +80,7 @@ export async function backfillEmbeddings(
 
     embedded += 1;
     tokens += result.inputTokens;
-    deps.onProgress?.(`${position} embedded (${result.inputTokens} tok): ${row.text.slice(0, 60)}`);
+    deps.onProgress?.(`${position} ${row.id} embedded (${result.inputTokens} tok)`);
   }
 
   return { embedded, failed, total: rows.length, tokens };
