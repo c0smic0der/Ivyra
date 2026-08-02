@@ -13,6 +13,7 @@ import {
   ece,
   EWMA_ALPHA,
   ewmaBrierTrend,
+  frequencyGap,
   PROGRESS_UNLOCK_N,
   rollingBrier,
   rollingBrierTrend,
@@ -151,6 +152,35 @@ describe("biasScore (mean confidence − hit rate)", () => {
 
   it("returns null on empty input", () => {
     expect(biasScore([])).toBeNull();
+  });
+});
+
+describe("frequencyGap (the two numbers behind the bias score)", () => {
+  it("reports mean stated confidence and the actual hit rate", () => {
+    // conf [0.9, 0.9] → mean 0.9; outcomes [true, false] → hit rate 0.5.
+    const g = frequencyGap([p(0.9, true), p(0.9, false)])!;
+    expect(g.meanConfidence).toBeCloseTo(0.9, 10);
+    expect(g.actualFrequency).toBeCloseTo(0.5, 10);
+    expect(g.n).toBe(2);
+  });
+
+  it("excludes voids and open rows from both figures (same population as bias)", () => {
+    const preds = [p(0.9, true), p(0.9, false), p(0.5, null, "void"), p(0.5, null, "open")];
+    const g = frequencyGap(preds)!;
+    expect(g.n).toBe(2);
+    expect(g.meanConfidence).toBeCloseTo(0.9, 10);
+    expect(g.actualFrequency).toBeCloseTo(0.5, 10);
+  });
+
+  it("returns null when there are no resolved, non-void predictions", () => {
+    expect(frequencyGap([])).toBeNull();
+    expect(frequencyGap([p(0.5, null, "void"), p(0.5, null, "open")])).toBeNull();
+  });
+
+  it("biasScore is exactly meanConfidence − actualFrequency of this pair (cannot drift)", () => {
+    const preds = [p(0.95, true), p(0.8, false), p(0.7, true), p(0.6, false), p(0.55, false)];
+    const g = frequencyGap(preds)!;
+    expect(biasScore(preds)).toBeCloseTo(g.meanConfidence - g.actualFrequency, 12);
   });
 });
 

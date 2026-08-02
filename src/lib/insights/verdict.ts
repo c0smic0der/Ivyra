@@ -1,12 +1,15 @@
-import type { Profile } from "@/lib/scoring";
+import type { FrequencyGap, Profile } from "@/lib/scoring";
 
 // The one-line headline verdict at the top of /insights — a deterministic,
 // templated read of the user's own numbers (NOT an AI narration and NOT a score:
-// it only phrases the profile the scoring module already assigned).
+// it phrases the frequency gap and the profile the scoring module already
+// computed; it never does the math itself and the component never does either).
 //
-// It is DESCRIPTIVE ONLY: it states what is, never what to do. Any "here's how to
-// fix it" belongs to the AI insight card, which is built for exactly that. Keep
-// this observational so the two never step on each other.
+// The headline LEADS WITH THE FREQUENCY GAP in the user's own terms — "When you
+// say 85%, it happens 38% of the time" — for every scope with enough data. Every
+// string reports a frequency; none evaluates whether a call was good, wise, or
+// right (CLAUDE.md copy rule). It is DESCRIPTIVE ONLY: it states what is, never
+// what to do. Any "here's how to fix it" belongs to the AI insight card.
 
 export type VerdictTone = "positive" | "caution" | "neutral" | "locked";
 
@@ -22,8 +25,25 @@ export interface Verdict {
  *  miscalibrated verdict names a direction rather than a generic mismatch. */
 const BIAS_DIRECTION_DEADBAND = 0.02;
 
-export function buildVerdict(input: { n: number; profile: Profile; biasValue: number | null }): Verdict {
-  const { n, profile, biasValue } = input;
+/**
+ * The frequency-gap headline in the user's own terms. Both numbers come from the
+ * scoring module's `frequencyGap` (this only rounds to whole percents for
+ * display — presentation, not scoring). States a frequency and stops.
+ */
+export function frequencyGapHeadline(gap: FrequencyGap): string {
+  const stated = Math.round(gap.meanConfidence * 100);
+  const actual = Math.round(gap.actualFrequency * 100);
+  return `When you say ${stated}%, it happens ${actual}% of the time.`;
+}
+
+export function buildVerdict(input: {
+  n: number;
+  profile: Profile;
+  biasValue: number | null;
+  /** The scoring module's mean-confidence / actual-frequency pair (lifetime). */
+  gap: FrequencyGap | null;
+}): Verdict {
+  const { n, profile, biasValue, gap } = input;
 
   if (n === 0) {
     return {
@@ -41,24 +61,28 @@ export function buildVerdict(input: { n: number; profile: Profile; biasValue: nu
     };
   }
 
+  // Every scope with enough data LEADS WITH THE FREQUENCY GAP. `gap` is non-null
+  // whenever n > 0 (so the fallback is unreachable here), but keeps this total.
+  const headline = gap ? frequencyGapHeadline(gap) : "Your calibration picture is still forming";
+
   if (profile === "calibrated_and_bold") {
     return {
-      headline: "You're calibrated and bold",
-      sub: "Your confidence tracks reality and commits at the same time.",
+      headline,
+      sub: "Your confidence tracks how often things actually happen, across the full range.",
       tone: "positive",
     };
   }
 
   if (profile === "hedger") {
     return {
-      headline: "Well-calibrated, but you tend to hedge",
-      sub: "Your calls are honest; they just stay close to 50/50.",
+      headline,
+      sub: "Your calls land about as often as you say — your confidence just stays near 50/50.",
       tone: "neutral",
     };
   }
 
-  // miscalibrated — name the direction when the bias is clearly one-sided. Purely
-  // observational: the correction lives in the AI insight, not here.
+  // miscalibrated — name the direction of the gap when the bias is clearly
+  // one-sided. Every sub reports a frequency relationship; none prescribes.
   const dir =
     biasValue === null
       ? null
@@ -70,21 +94,21 @@ export function buildVerdict(input: { n: number; profile: Profile; biasValue: nu
 
   if (dir === "over") {
     return {
-      headline: "You lean overconfident",
+      headline,
       sub: "Your high-confidence calls come true less often than you claim.",
       tone: "caution",
     };
   }
   if (dir === "under") {
     return {
-      headline: "You lean underconfident",
+      headline,
       sub: "Outcomes come true more often than your confidence suggests.",
       tone: "caution",
     };
   }
   return {
-    headline: "Your confidence and outcomes don't line up yet",
-    sub: "The gap between what you predict and what happens is still wide.",
+    headline,
+    sub: "The gap between the confidence you state and how often it happens is still wide.",
     tone: "caution",
   };
 }

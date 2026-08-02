@@ -17,6 +17,7 @@ import {
 import { queryFullHistory } from "@/lib/insights/historyQuery";
 import { EMPTY_PARAMS, resolveFocusId } from "@/lib/insights/historyView";
 import { buildVerdict } from "@/lib/insights/verdict";
+import { frequencyGap } from "@/lib/scoring";
 import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/Card";
 import { Header } from "@/components/Header";
@@ -84,6 +85,9 @@ export default async function InsightsPage({
     n: vm.n,
     profile: buildScopeStats(insightPreds, "lifetime").profile,
     biasValue: vm.bias.value,
+    // The two numbers behind the frequency-gap headline, from the scoring module
+    // over the same lifetime population `vm.bias.value` is computed from.
+    gap: frequencyGap(insightPreds),
   });
 
   const catMenu: CategoryMenuItem[] = categoryMenu(insightPreds);

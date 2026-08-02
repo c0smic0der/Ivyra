@@ -180,17 +180,42 @@ export function ewmaBrierTrend(preds: Scorable[], alpha = EWMA_ALPHA): RollingPo
 }
 
 /**
+ * The two numbers behind the bias score, kept together: the mean stated
+ * confidence and the observed hit rate (actual frequency) over resolved,
+ * non-void predictions, both in [0, 1]. `null` when there are no resolutions.
+ *
+ * Exists so the headline that quotes them ("When you say 85%, it happens 38% of
+ * the time") derives from the SAME computation as the bias score — the two can
+ * never drift, since `biasScore` is `meanConfidence − actualFrequency` of this
+ * exact pair (CLAUDE.md: two paths that must agree ⇒ one derives from the other).
+ */
+export interface FrequencyGap {
+  meanConfidence: number;
+  actualFrequency: number;
+  /** Resolved, non-void count the pair was averaged over. */
+  n: number;
+}
+
+export function frequencyGap(preds: Scorable[]): FrequencyGap | null {
+  const resolved = resolvedNonVoid(preds);
+  if (resolved.length === 0) return null;
+  return {
+    meanConfidence: mean(resolved.map((p) => p.confidence)),
+    actualFrequency: mean(resolved.map((p) => (p.outcome ? 1 : 0))),
+    n: resolved.length,
+  };
+}
+
+/**
  * Bias: mean stated confidence − actual hit rate over resolved, non-void
  * predictions. Positive ⇒ overconfident, negative ⇒ underconfident. This is
  * the legibility stat that reads meaningfully from ~10 resolutions, before the
- * curve unlocks. `null` if there are no resolutions.
+ * curve unlocks. `null` if there are no resolutions. Derived from `frequencyGap`
+ * so the headline and the bias number always describe the same two figures.
  */
 export function biasScore(preds: Scorable[]): number | null {
-  const resolved = resolvedNonVoid(preds);
-  if (resolved.length === 0) return null;
-  const meanConfidence = mean(resolved.map((p) => p.confidence));
-  const hitRate = mean(resolved.map((p) => (p.outcome ? 1 : 0)));
-  return meanConfidence - hitRate;
+  const gap = frequencyGap(preds);
+  return gap === null ? null : gap.meanConfidence - gap.actualFrequency;
 }
 
 /** Bias score for one group (e.g. one category, one reasoning type). */
