@@ -5,6 +5,8 @@ import {
   entryHref,
   formatResolveDate,
   groupByMonth,
+  isDue,
+  monthNavFromTimestamps,
   JOURNAL_PAGE_SIZE,
   type JournalRow,
   reasoningPreview,
@@ -82,10 +84,41 @@ describe("month grouping", () => {
   });
 });
 
+describe("monthNavFromTimestamps — the full month rail", () => {
+  it("lists every distinct month, newest first, regardless of how many entries share one", () => {
+    const ts = [
+      "2026-09-20T12:00:00Z",
+      "2026-08-26T12:00:00Z",
+      "2026-08-01T12:00:00Z", // second August entry — still one AUG in the rail
+      "2026-04-10T12:00:00Z",
+      "2026-03-05T12:00:00Z",
+    ];
+    const nav = monthNavFromTimestamps(ts, "UTC");
+    expect(nav.map((m) => m.key)).toEqual(["2026-09", "2026-08", "2026-04", "2026-03"]);
+    expect(nav.map((m) => m.label)).toEqual(["SEPTEMBER", "AUGUST", "APRIL", "MARCH"]);
+  });
+
+  it("groups a month-boundary timestamp by the supplied timezone", () => {
+    // 2026-08-01T02:30Z is still July 31 in New York.
+    const nav = monthNavFromTimestamps(["2026-08-01T02:30:00Z"], "America/New_York");
+    expect(nav[0]!.key).toBe("2026-07");
+    expect(nav[0]!.label).toBe("JULY");
+  });
+
+  it("is empty for no timestamps", () => {
+    expect(monthNavFromTimestamps([], "UTC")).toEqual([]);
+  });
+});
+
 describe("annotation states", () => {
-  it("open: confidence percentage and a compact resolves date", () => {
+  it("open: confidence percentage, compact resolves date, and the raw resolution date", () => {
     const ann = annotationFor(row({ id: "o", createdAt: "2026-07-28T12:00:00Z", confidence: 0.8 }));
-    expect(ann).toEqual({ kind: "open", confidencePct: 80, resolvesLabel: "15/8" });
+    expect(ann).toEqual({
+      kind: "open",
+      confidencePct: 80,
+      resolvesLabel: "08/15",
+      resolutionDate: "2026-08-15",
+    });
   });
 
   it("resolved: outcome plus the scoring module's Brier (no inline math)", () => {
@@ -116,6 +149,17 @@ describe("annotation states", () => {
   });
 });
 
+describe("isDue — the shared due rule (bare-date UTC compare)", () => {
+  it("is due when the resolution date is today or earlier", () => {
+    expect(isDue("2026-08-03", "2026-08-03")).toBe(true); // today
+    expect(isDue("2026-07-20", "2026-08-03")).toBe(true); // past
+  });
+  it("is not due when the resolution date is still in the future", () => {
+    expect(isDue("2026-08-15", "2026-08-03")).toBe(false);
+    expect(isDue("2026-10-05", "2026-08-03")).toBe(false);
+  });
+});
+
 describe("entry destination", () => {
   it("open entries link to the resolve screen", () => {
     const e = toJournalEntry(row({ id: "open-1", createdAt: "2026-07-28T12:00:00Z" }));
@@ -141,10 +185,10 @@ describe("entry destination", () => {
 });
 
 describe("resolves date formatting", () => {
-  it("is a compact day/month with no leading zeros, in UTC", () => {
-    expect(formatResolveDate("2026-08-15")).toBe("15/8");
-    expect(formatResolveDate("2026-01-05")).toBe("5/1");
-    expect(formatResolveDate("2026-12-31")).toBe("31/12");
+  it("is a compact, zero-padded month/day", () => {
+    expect(formatResolveDate("2026-08-15")).toBe("08/15");
+    expect(formatResolveDate("2026-01-05")).toBe("01/05");
+    expect(formatResolveDate("2026-12-31")).toBe("12/31");
   });
 });
 

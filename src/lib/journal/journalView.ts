@@ -41,9 +41,18 @@ export interface JournalRow {
 
 /** The right-aligned annotation, discriminated by lifecycle state. */
 export type Annotation =
-  | { kind: "open"; confidencePct: number; resolvesLabel: string }
+  | { kind: "open"; confidencePct: number; resolvesLabel: string; resolutionDate: string }
   | { kind: "resolved"; outcome: boolean; brier: number }
   | { kind: "void" };
+
+/**
+ * Whether an open entry's resolution date has arrived — a bare-date UTC compare.
+ * The ONE rule both the timeline's "due" colour and the dashboard resolve queue
+ * read, so a given entry is coloured identically in both places.
+ */
+export function isDue(resolutionDate: string, todayIso: string): boolean {
+  return resolutionDate <= todayIso;
+}
 
 /** A serializable entry handed to the client component. */
 export interface JournalEntry {
@@ -63,16 +72,14 @@ export interface JournalPage {
 }
 
 /**
- * Format a bare resolution date as a compact "15/8". The column is a calendar
- * date with no time or zone, so it is formatted in UTC — matching the app-wide
- * convention for bare `date` columns (never local-time math on them).
+ * Format a bare resolution date as a compact, zero-padded "MM/DD" (e.g. "08/15").
+ * The column is a calendar date with no time or zone, so the parts are read
+ * straight from the "YYYY-MM-DD" string — no Date(), no timezone can shift it,
+ * and the ISO parts are already two-digit.
  */
 export function formatResolveDate(resolutionDate: string): string {
-  // Parse the YYYY-MM-DD parts directly rather than via Date() — no timezone can
-  // shift a bare calendar date, and formatting from the parts guarantees the
-  // compact, no-leading-zero "15/8" shape the design calls for (Intl pads it).
   const [, m, d] = resolutionDate.split("-");
-  return `${Number(d)}/${Number(m)}`;
+  return `${m}/${d}`;
 }
 
 /**
@@ -111,6 +118,9 @@ export function annotationFor(row: JournalRow): Annotation {
     kind: "open",
     confidencePct: Math.round(row.confidence * 100),
     resolvesLabel: formatResolveDate(row.resolutionDate),
+    // Carried so the client can colour the entry's marker by due state (isDue),
+    // matching the resolve queue — no scoring, just a bare-date compare.
+    resolutionDate: row.resolutionDate,
   };
 }
 
@@ -177,6 +187,37 @@ export function groupByMonth(entries: JournalEntry[], timeZone: string): MonthSe
     section.entries.push({ entry, dayLabel: dayFmt.format(at) });
   }
   return sections;
+}
+
+/** One month in the navigator rail. */
+export interface NavMonth {
+  /** "YYYY-MM" in the viewer's zone — matches a rendered section's key. */
+  key: string;
+  /** Uppercased month name, e.g. "JULY". */
+  label: string;
+}
+
+/**
+ * The FULL month navigator, built from every entry timestamp (not just the pages
+ * loaded so far), so the rail lists the whole timeline's months even before older
+ * pages page in. Distinct months in the viewer's zone — the same key/label logic
+ * as `groupByMonth`, so nav entries line up with rendered sections. Input must be
+ * newest-first; output preserves that order.
+ */
+export function monthNavFromTimestamps(timestampsNewestFirst: string[], timeZone: string): NavMonth[] {
+  const keyFmt = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", timeZone });
+  const labelFmt = new Intl.DateTimeFormat("en-US", { month: "long", timeZone });
+  const seen = new Set<string>();
+  const months: NavMonth[] = [];
+  for (const ts of timestampsNewestFirst) {
+    const at = new Date(ts);
+    const key = keyFmt.format(at).slice(0, 7);
+    if (!seen.has(key)) {
+      seen.add(key);
+      months.push({ key, label: labelFmt.format(at).toUpperCase() });
+    }
+  }
+  return months;
 }
 
 /** Newest-first with a stable id tiebreak — the single ordering both the pure

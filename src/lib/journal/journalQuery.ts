@@ -1,4 +1,4 @@
-import { and, count, desc, eq, lte } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import {
   JOURNAL_PAGE_SIZE,
@@ -110,14 +110,16 @@ export async function queryJournalWindow(
   return { items: rows.slice(0, limit).map(mapRow).map(toJournalEntry), hasMore };
 }
 
-/** Count of open entries whose resolution date has arrived (UTC calendar day) —
- * drives the "N ready to resolve" strip. `resolution_date` is a bare date, so
- * it is compared against today's UTC date string, matching the app convention.
- * No scoring, no content read. */
-export async function countDueForResolution(userId: string, todayIso: string): Promise<number> {
-  const [row] = await db
-    .select({ n: count() })
+/**
+ * Every entry timestamp for the user, newest first — just the dates, no content.
+ * Feeds the full month navigator (monthNavFromTimestamps) so the rail lists all
+ * months even before the older pages are loaded.
+ */
+export async function queryJournalTimestamps(userId: string): Promise<string[]> {
+  const rows = await db
+    .select({ createdAt: p.createdAt })
     .from(p)
-    .where(and(eq(p.userId, userId), eq(p.status, "open"), lte(p.resolutionDate, todayIso)));
-  return row?.n ?? 0;
+    .where(eq(p.userId, userId))
+    .orderBy(desc(p.createdAt), desc(p.id));
+  return rows.map((r) => r.createdAt.toISOString());
 }
