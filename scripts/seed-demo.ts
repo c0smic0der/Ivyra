@@ -293,10 +293,15 @@ function buildResolvedRows(userId: string): PredictionRow[] {
 }
 
 function buildOpenRows(userId: string): PredictionRow[] {
-  // Created a couple of weeks before their resolution date.
+  const DAY = 24 * 3600 * 1000;
+  // A prediction is always WRITTEN in the past. Aim for ~2 weeks before the
+  // resolution date, but never later than a few days ago — otherwise an entry
+  // whose resolution date is months out would be "created" in the future, and
+  // resolving it would leave a completed entry dated after today.
+  const latestCreatedAt = Date.now() - 3 * DAY;
   return OPEN.map((o) => {
     const resolution = new Date(`${o.resolutionDate}T00:00:00Z`);
-    const createdAt = new Date(resolution.getTime() - 14 * 24 * 3600 * 1000);
+    const createdAt = new Date(Math.min(resolution.getTime() - 14 * DAY, latestCreatedAt));
     return {
       userId,
       text: o.text,
