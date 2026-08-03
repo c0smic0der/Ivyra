@@ -110,11 +110,14 @@ function Kpi({
   value,
   onClick,
   active,
+  info,
 }: {
   label: string;
   value: string;
   onClick: () => void;
   active?: boolean;
+  /** A one-line plain-language definition, shown as a hover tooltip off an "i". */
+  info?: string;
 }) {
   return (
     <button
@@ -122,11 +125,36 @@ function Kpi({
       onClick={onClick}
       aria-pressed={active}
       className={cx(
-        "flex flex-col items-center rounded-xl border px-4 py-4 text-center transition-colors",
+        "relative flex flex-col items-center rounded-xl border px-4 py-4 text-center transition-colors",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
         active ? "border-accent bg-accent-tint" : "border-border-subtle hover:border-accent/40 hover:bg-surface",
       )}
     >
+      {info && (
+        <span className="group/info absolute right-2 top-2">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="text-ink-tertiary/60 transition-colors group-hover/info:text-ink-secondary"
+            aria-hidden
+          >
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 16v-4M12 8h.01" />
+          </svg>
+          <span
+            role="tooltip"
+            className="pointer-events-none absolute right-0 top-6 z-20 hidden w-52 rounded-lg border border-border bg-canvas px-3 py-2 text-left text-xs font-normal leading-snug text-ink-secondary shadow-[var(--shadow-card)] group-hover/info:block"
+          >
+            {info}
+          </span>
+        </span>
+      )}
       <span className="text-2xl font-semibold tabular-nums text-ink">{value}</span>
       <span className="mt-0.5 text-xs text-ink-tertiary">{label}</span>
     </button>
@@ -181,13 +209,21 @@ export function InsightsOverview({
             value={runningBrier !== null ? runningBrier.toFixed(2) : "—"}
             onClick={() => setTab("progress")}
             active={tab === "progress"}
+            info="How closely your confidence tends to track what actually happens."
           />
-          <Kpi label="Bias score" value={biasValue} onClick={() => setTab("bias")} active={tab === "bias"} />
+          <Kpi
+            label="Bias score"
+            value={biasValue}
+            onClick={() => setTab("bias")}
+            active={tab === "bias"}
+            info="Whether you tend to run overconfident or underconfident overall."
+          />
           <Kpi
             label="Boldness"
             value={boldnessValue}
             onClick={() => setTab("calibration")}
             active={tab === "calibration"}
+            info="Whether your confidence swings high and low or stays cautiously near the middle."
           />
           <Kpi label="Resolved" value={String(n)} onClick={scrollToHistory} />
         </div>

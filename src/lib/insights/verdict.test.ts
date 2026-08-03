@@ -10,45 +10,45 @@ const gap = (meanConfidence: number, actualFrequency: number, n = 30): Frequency
 
 describe("frequencyGapHeadline", () => {
   it("states the gap in the user's own terms, rounded to whole percents", () => {
-    expect(frequencyGapHeadline(gap(0.85, 0.38))).toBe("When you say 85%, it happens 38% of the time.");
+    expect(frequencyGapHeadline(gap(0.85, 0.38))).toBe("On average you claimed 85% certainty, and things you predicted panned out 38% of the time.");
   });
 
   it("rounds each figure independently", () => {
-    expect(frequencyGapHeadline(gap(0.854, 0.376))).toBe("When you say 85%, it happens 38% of the time.");
-    expect(frequencyGapHeadline(gap(0.705, 0.695))).toBe("When you say 71%, it happens 70% of the time.");
+    expect(frequencyGapHeadline(gap(0.854, 0.376))).toBe("On average you claimed 85% certainty, and things you predicted panned out 38% of the time.");
+    expect(frequencyGapHeadline(gap(0.705, 0.695))).toBe("On average you claimed 71% certainty, and things you predicted panned out 70% of the time.");
   });
 });
 
 describe("buildVerdict — the headline leads with the frequency gap", () => {
   it("overconfident: quotes the wide gap between stated confidence and frequency", () => {
     const v = buildVerdict({ n: 30, profile: "miscalibrated", biasValue: 0.47, gap: gap(0.85, 0.38) });
-    expect(v.headline).toBe("When you say 85%, it happens 38% of the time.");
+    expect(v.headline).toBe("On average you claimed 85% certainty, and things you predicted panned out 38% of the time.");
     expect(v.tone).toBe("caution");
     expect(v.sub).toBe("Your high-confidence calls come true less often than you claim.");
   });
 
   it("underconfident: same headline shape, the gap simply runs the other way", () => {
     const v = buildVerdict({ n: 30, profile: "miscalibrated", biasValue: -0.2, gap: gap(0.6, 0.8) });
-    expect(v.headline).toBe("When you say 60%, it happens 80% of the time.");
+    expect(v.headline).toBe("On average you claimed 60% certainty, and things you predicted panned out 80% of the time.");
     expect(v.tone).toBe("caution");
     expect(v.sub).toBe("Outcomes come true more often than your confidence suggests.");
   });
 
   it("well-calibrated (calibrated_and_bold): the two numbers nearly match", () => {
     const v = buildVerdict({ n: 34, profile: "calibrated_and_bold", biasValue: 0.01, gap: gap(0.71, 0.7) });
-    expect(v.headline).toBe("When you say 71%, it happens 70% of the time.");
+    expect(v.headline).toBe("On average you claimed 71% certainty, and things you predicted panned out 70% of the time.");
     expect(v.tone).toBe("positive");
   });
 
   it("hedging: still a frequency statement, numbers hug 50/50", () => {
     const v = buildVerdict({ n: 30, profile: "hedger", biasValue: 0.01, gap: gap(0.56, 0.55) });
-    expect(v.headline).toBe("When you say 56%, it happens 55% of the time.");
+    expect(v.headline).toBe("On average you claimed 56% certainty, and things you predicted panned out 55% of the time.");
     expect(v.tone).toBe("neutral");
   });
 
   it("centered/unknown-bias miscalibration still leads with the gap", () => {
     const centered = buildVerdict({ n: 30, profile: "miscalibrated", biasValue: 0, gap: gap(0.7, 0.62) });
-    expect(centered.headline).toBe("When you say 70%, it happens 62% of the time.");
+    expect(centered.headline).toBe("On average you claimed 70% certainty, and things you predicted panned out 62% of the time.");
     expect(centered.sub).toBe("The gap between the confidence you state and how often it happens is still wide.");
   });
 });

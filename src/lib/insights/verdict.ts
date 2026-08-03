@@ -5,11 +5,12 @@ import type { FrequencyGap, Profile } from "@/lib/scoring";
 // it phrases the frequency gap and the profile the scoring module already
 // computed; it never does the math itself and the component never does either).
 //
-// The headline LEADS WITH THE FREQUENCY GAP in the user's own terms — "When you
-// say 85%, it happens 38% of the time" — for every scope with enough data. Every
-// string reports a frequency; none evaluates whether a call was good, wise, or
-// right (CLAUDE.md copy rule). It is DESCRIPTIVE ONLY: it states what is, never
-// what to do. Any "here's how to fix it" belongs to the AI insight card.
+// The headline LEADS WITH THE FREQUENCY GAP as a one-line OVERALL summary of the
+// user's record — "On average you claimed 85% certainty, and things you predicted
+// panned out 38% of the time" — for every scope with enough data. Every string
+// reports a frequency; none evaluates whether a call was good, wise, or right
+// (CLAUDE.md copy rule). It is DESCRIPTIVE ONLY: it states what is, never what to
+// do. Any "here's how to fix it" belongs to the AI insight card.
 
 export type VerdictTone = "positive" | "caution" | "neutral" | "locked";
 
@@ -26,14 +27,16 @@ export interface Verdict {
 const BIAS_DIRECTION_DEADBAND = 0.02;
 
 /**
- * The frequency-gap headline in the user's own terms. Both numbers come from the
- * scoring module's `frequencyGap` (this only rounds to whole percents for
- * display — presentation, not scoring). States a frequency and stops.
+ * The frequency-gap headline: an explicit ONE-LINE OVERALL summary, so it reads
+ * as a running average of the user's own record rather than a fact about one
+ * confidence level. Both numbers come from the scoring module's `frequencyGap`
+ * (mean stated confidence, overall hit rate) — this only rounds to whole percents
+ * for display. States frequencies and stops (CLAUDE.md copy rule).
  */
 export function frequencyGapHeadline(gap: FrequencyGap): string {
   const stated = Math.round(gap.meanConfidence * 100);
   const actual = Math.round(gap.actualFrequency * 100);
-  return `When you say ${stated}%, it happens ${actual}% of the time.`;
+  return `On average you claimed ${stated}% certainty, and things you predicted panned out ${actual}% of the time.`;
 }
 
 export function buildVerdict(input: {
