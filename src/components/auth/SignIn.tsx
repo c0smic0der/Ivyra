@@ -60,7 +60,17 @@ function SignInModal({
     });
 
     if (signInError) {
-      setError(signInError.message);
+      // Log the real error for debugging (class + status only — no PII). A failed
+      // SEND on Supabase's side comes back with an empty/opaque body (e.g. "{}"),
+      // so fall back to a human message rather than rendering that raw.
+      console.error("signInWithOtp failed", signInError.name, "status", signInError.status ?? "?");
+      const raw = signInError.message?.trim() ?? "";
+      const useful = raw !== "" && raw !== "{}" && !raw.startsWith("{");
+      setError(
+        useful
+          ? raw
+          : "We couldn't send the magic link right now. Please try again in a moment.",
+      );
       setStatus("error");
     } else {
       setStatus("sent");
@@ -120,7 +130,7 @@ function SignInModal({
               disabled={status === "sending"}
               className={buttonVariants("primary", { className: "disabled:opacity-50" })}
             >
-              {status === "sending" ? "Sending…" : "Send magic link"}
+              {status === "sending" ? "Sending…" : "Send"}
             </button>
             {error && <p className="text-sm text-danger">{error}</p>}
           </form>
