@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { CalibrationChart } from "@/app/insights/CalibrationChart";
 import type { CalibrationPoint } from "@/lib/insights/insightsCore";
 import { Card, CardLabel } from "@/components/ui/Card";
+import { BrandMark } from "@/components/BrandMark";
 import { SignInButton, SignInProvider } from "@/components/auth/SignIn";
 
 // Marketing sample only — empty `predictions` makes the chart's drill-down
@@ -175,8 +176,11 @@ export default async function Home({
           text link, not a competing button. */}
       <header className="sticky top-0 z-10 border-b border-border bg-canvas/80 backdrop-blur-md">
         <div className="mx-auto flex h-20 w-full max-w-5xl items-center justify-between gap-4 px-6">
-          <span className="font-wordmark text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
-            Ivyra<span className="text-accent">.</span>
+          <span className="flex items-center gap-2.5">
+            <BrandMark className="h-8 w-8 shrink-0" />
+            <span className="font-wordmark text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
+              Ivyra
+            </span>
           </span>
           <div className="flex flex-col items-end gap-1.5">
             <div className="flex items-center gap-4 sm:gap-5">
