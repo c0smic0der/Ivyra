@@ -42,7 +42,8 @@ function InfoTooltip({ text }: { text: string }) {
 
 /**
  * The coach's note — the scoped AI insight rendered as a blockquote, the only
- * accent-bordered element on the page. The numbers, profile, freshness, and
+ * element with a solid accent border (the page title carries a fainter accent
+ * rule). The numbers, profile, freshness, and
  * per-scope gating are all decided server-side; this owns the scope selector and
  * the on-demand Generate/Regenerate action. It never auto-generates: a stale or
  * absent insight waits for an explicit click, so a page load can never silently
@@ -97,7 +98,7 @@ export function ScopedInsight({
     <section aria-label="AI insight" className="border-l-2 border-accent pl-5">
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <p className="text-xs font-medium uppercase tracking-[0.14em] text-ink-tertiary">
-          This week’s read · {scopeDescriptor(card)}
+          From your history · {scopeDescriptor(card)}
         </p>
 
         {/* Controls, minimal, to the right of the overline. */}

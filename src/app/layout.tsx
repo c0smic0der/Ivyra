@@ -22,9 +22,9 @@ const spaceGrotesk = Space_Grotesk({
   weight: ["500", "600"],
 });
 
-// The editorial "voice" serif — used only for the insights verdict hero and the
-// coach's-note blockquote, where the app speaks in prose rather than reporting a
-// figure. Optical/soft display serif; deliberately distinct from the Geist body.
+// The editorial "voice" serif — used only for the insights coach's-note
+// blockquote, where the app speaks in prose rather than reporting a figure.
+// Optical/soft display serif; deliberately distinct from the Geist body.
 const fraunces = Fraunces({
   variable: "--font-fraunces",
   subsets: ["latin"],

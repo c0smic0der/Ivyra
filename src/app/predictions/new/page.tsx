@@ -49,7 +49,10 @@ export default async function NewPredictionPage({
       <main className="page-gradient flex flex-1 justify-center px-6 py-8 lg:px-8">
         <div className="mx-auto w-full max-w-3xl">
           <div>
-            <h1 className="text-3xl font-semibold tracking-tight text-ink">New entry</h1>
+            {/* Shared page-title treatment (dashboard / insights / account). */}
+            <h1 className="border-l-2 border-accent/40 pl-4 text-3xl font-semibold tracking-tight text-ink">
+              New entry
+            </h1>
             <EntryDate />
           </div>
 

@@ -15,7 +15,7 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-wordmark: var(--font-space-grotesk);
-  /* Editorial "voice" serif — insights verdict hero + coach's-note blockquote only. */
+  /* Editorial "voice" serif — insights coach's-note blockquote only. */
   --font-serif: var(--font-fraunces);
 
   /* Design system tokens */

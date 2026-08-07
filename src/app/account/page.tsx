@@ -31,7 +31,10 @@ export default async function AccountPage() {
     <>
       <Header />
       <main className="mx-auto w-full max-w-2xl flex-1 px-6 py-12 lg:px-8">
-        <h1 className="font-wordmark text-2xl font-semibold tracking-tight text-ink">Account</h1>
+        {/* Shared page-title treatment (dashboard / insights / new entry). */}
+        <h1 className="border-l-2 border-accent/40 pl-4 text-3xl font-semibold tracking-tight text-ink">
+          Account
+        </h1>
 
         <Card className="mt-8">
           <CardLabel>Account details</CardLabel>

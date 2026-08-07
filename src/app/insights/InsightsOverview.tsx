@@ -132,7 +132,7 @@ function VerdictHero({ verdict, trend, n }: { verdict: Verdict; trend: VerdictTr
       <p className="text-xs font-medium uppercase tracking-[0.18em] text-ink-tertiary">
         Insights · {n} resolved
       </p>
-      <h2 className="mt-3 font-serif text-[27px] font-medium leading-snug tracking-tight text-ink sm:text-[30px]">
+      <h2 className="mt-3 text-[27px] font-medium leading-snug tracking-tight text-ink sm:text-[30px]">
         <AccentPercents text={verdict.headline} />
         <span className="sr-only"> — calibration status: {verdictToneLabel(verdict.tone)}</span>
       </h2>
@@ -383,7 +383,8 @@ export function InsightsOverview({
       <VerdictHero verdict={verdict} trend={trend} n={n} />
       <StatStrip runningBrier={runningBrier} bias={bias} boldness={boldness} recent={recent} />
       <EvidenceBand baseline={baseline} curve={curve} progress={progress} />
-      {/* Coach's note — the AI insight, the only accent-bordered element on the page. */}
+      {/* Coach's note — the AI insight, the only element with a solid accent
+          border (the page title carries a fainter accent rule). */}
       <div className="mx-auto mt-14 max-w-[42rem]">{insightSlot}</div>
       <CategoryBreakdown bias={bias} />
     </div>

@@ -158,7 +158,16 @@ export default async function InsightsPage({
             lets the evidence band's two charts sit side by side while prose
             blocks stay capped at a comfortable measure. */}
         <div className="w-full max-w-[min(80vw,1280px)]">
-          <h1 className="text-3xl font-semibold tracking-tight text-ink">Insights</h1>
+          {/* The page body uses a wider (chart-led) measure than the dashboard,
+              so its left edge sits further left. Align the title to a max-w-6xl
+              block — both pages' <main> are centered identically — so "Insights"
+              lands at the same left position as the dashboard's "Your journal",
+              with the shared title treatment (size/font + faint accent rule). */}
+          <div className="mx-auto w-full max-w-6xl">
+            <h1 className="border-l-2 border-accent/40 pl-4 text-3xl font-semibold tracking-tight text-ink">
+              Insights
+            </h1>
+          </div>
 
           {vm.n === 0 && (
             <div className="mt-6 rounded-xl border border-dashed border-border p-4 text-sm text-ink-secondary">
