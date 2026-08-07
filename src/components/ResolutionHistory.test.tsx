@@ -70,9 +70,11 @@ describe("ResolutionHistory — full mode layout", () => {
 });
 
 describe("ResolutionHistory — self-contained cards", () => {
-  it("collapsed cards show the essentials but hide the frozen record — and never link out", () => {
+  it("collapsed cards show the scannable tag but hide the full sentence and frozen record", () => {
     const html = renderFull(5);
-    expect(html).toContain("Brier"); // score line is part of the collapsed essentials
+    expect(html).toContain("beat the 50/50 baseline"); // the compressed tag (Brier 0.09 < 0.25)
+    expect(html).toContain("0.09"); // the numeric Brier, right-aligned by the verdict
+    expect(html).not.toContain("Brier"); // the full directional sentence is expanded-only
     expect(html).not.toContain("reasoning 0"); // frozen record hidden until expanded
     expect(html).not.toContain("Looking back");
     expect(html).not.toContain("Open full detail"); // no link out to a detail page
@@ -81,6 +83,7 @@ describe("ResolutionHistory — self-contained cards", () => {
 
   it("a focused (deep-linked) card renders expanded with the complete record", () => {
     const html = renderFull(5, "p00");
+    expect(html).toContain("Brier"); // the full directional sentence appears when expanded
     expect(html).toContain("Your frozen reasoning");
     expect(html).toContain("reasoning 0");
     expect(html).toContain("What would change your mind"); // plan label for a 'world' prediction

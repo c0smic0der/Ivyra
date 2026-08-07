@@ -1,0 +1,118 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`ResolutionHistory — collapsible search/filter bank > collapses the filter bank behind one affordance, expanding it in place on click > filter-bank-collapsed 1`] = `null`;
+
+exports[`ResolutionHistory — collapsible search/filter bank > collapses the filter bank behind one affordance, expanding it in place on click > filter-bank-expanded 1`] = `
+<div
+  class="bg-canvas rounded-xl border border-border p-6 shadow-[var(--shadow-card)] mt-3"
+  id="history-filter-bank"
+>
+  <div
+    class="flex flex-col gap-3"
+  >
+    <input
+      class="w-full rounded-xl border border-border bg-canvas px-3 py-1.5 text-sm text-ink outline-none transition-colors placeholder:text-ink-tertiary focus:border-accent focus:ring-2 focus:ring-accent/20"
+      placeholder="Search your predictions…"
+      type="text"
+      value=""
+    />
+    <div
+      class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4"
+    >
+      <label
+        class="flex flex-col gap-1 text-xs text-ink-tertiary"
+      >
+        Category
+        <select
+          class="w-full rounded-xl border border-border bg-canvas px-3 py-1.5 text-sm text-ink outline-none transition-colors placeholder:text-ink-tertiary focus:border-accent focus:ring-2 focus:ring-accent/20 capitalize"
+        >
+          <option
+            value=""
+          >
+            All
+          </option>
+          <option
+            class="capitalize"
+            value="work"
+          >
+            work
+          </option>
+          <option
+            class="capitalize"
+            value="health"
+          >
+            health
+          </option>
+          <option
+            class="capitalize"
+            value="relationships"
+          >
+            relationships
+          </option>
+          <option
+            class="capitalize"
+            value="money"
+          >
+            money
+          </option>
+          <option
+            class="capitalize"
+            value="self"
+          >
+            self
+          </option>
+        </select>
+      </label>
+      <label
+        class="flex flex-col gap-1 text-xs text-ink-tertiary"
+      >
+        Outcome
+        <select
+          class="w-full rounded-xl border border-border bg-canvas px-3 py-1.5 text-sm text-ink outline-none transition-colors placeholder:text-ink-tertiary focus:border-accent focus:ring-2 focus:ring-accent/20"
+        >
+          <option
+            value="all"
+          >
+            All
+          </option>
+          <option
+            value="yes"
+          >
+            Yes
+          </option>
+          <option
+            value="no"
+          >
+            No
+          </option>
+          <option
+            value="void"
+          >
+            Void
+          </option>
+        </select>
+      </label>
+      <label
+        class="flex flex-col gap-1 text-xs text-ink-tertiary"
+      >
+        Resolved from
+        <input
+          class="w-full rounded-xl border border-border bg-canvas px-3 py-1.5 text-sm text-ink outline-none transition-colors placeholder:text-ink-tertiary focus:border-accent focus:ring-2 focus:ring-accent/20"
+          type="date"
+          value=""
+        />
+      </label>
+      <label
+        class="flex flex-col gap-1 text-xs text-ink-tertiary"
+      >
+        Resolved to
+        <input
+          class="w-full rounded-xl border border-border bg-canvas px-3 py-1.5 text-sm text-ink outline-none transition-colors placeholder:text-ink-tertiary focus:border-accent focus:ring-2 focus:ring-accent/20"
+          type="date"
+          value=""
+        />
+      </label>
+    </div>
+  </div>
+</div>
+`;

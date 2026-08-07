@@ -17,7 +17,7 @@ import {
 import { queryFullHistory } from "@/lib/insights/historyQuery";
 import { EMPTY_PARAMS, resolveFocusId } from "@/lib/insights/historyView";
 import { buildVerdict } from "@/lib/insights/verdict";
-import { frequencyGap } from "@/lib/scoring";
+import { frequencyGap, verdictTrend } from "@/lib/scoring";
 import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/Card";
 import { Header } from "@/components/Header";
@@ -90,6 +90,12 @@ export default async function InsightsPage({
     gap: frequencyGap(insightPreds),
   });
 
+  // The recent-vs-lifetime gap move for the verdict hero's sub-line, and the
+  // recent-window figures behind the stat-strip tooltip deltas — both from the
+  // scoring module / the SAME "recent" scope the AI insight and progress chart use.
+  const trend = verdictTrend(inputs);
+  const recentStats = buildScopeStats(insightPreds, "recent");
+
   const catMenu: CategoryMenuItem[] = categoryMenu(insightPreds);
   const scopes: InsightScope[] = [
     "recent",
@@ -148,9 +154,10 @@ export default async function InsightsPage({
     <>
       <Header />
       <main className="page-gradient flex flex-1 justify-center px-6 py-8 lg:px-8">
-        {/* Same container width as the dashboard, so the "Insights" title sits in
-            the exact same spot as "Dashboard" when moving between the two pages. */}
-        <div className="w-full max-w-5xl">
+        {/* Wider than the dashboard — this page is chart-led, and the extra room
+            lets the evidence band's two charts sit side by side while prose
+            blocks stay capped at a comfortable measure. */}
+        <div className="w-full max-w-[min(80vw,1280px)]">
           <h1 className="text-3xl font-semibold tracking-tight text-ink">Insights</h1>
 
           {vm.n === 0 && (
@@ -167,10 +174,11 @@ export default async function InsightsPage({
           )}
 
           <InsightsSelectionProvider>
-            {/* Hero (verdict + KPIs) full width, then the focused chart and the AI
-                insight side by side — filling the main row. */}
+            {/* A single-column narrative: verdict hero → stat strip → evidence
+                band → coach's note → category breakdown. History follows below. */}
             <InsightsOverview
               verdict={verdict}
+              trend={trend}
               n={vm.n}
               baseline={vm.baselineBrier}
               runningBrier={vm.runningBrier.value}
@@ -178,11 +186,12 @@ export default async function InsightsPage({
               boldness={vm.boldness}
               curve={vm.curve}
               progress={vm.progress}
-              insightSlot={
-                <Card>
-                  <ScopedInsight cards={insightCards} categoryMenu={catMenu} />
-                </Card>
-              }
+              recent={{
+                brier: recentStats.brier,
+                bias: recentStats.bias,
+                boldness: recentStats.boldness,
+              }}
+              insightSlot={<ScopedInsight cards={insightCards} categoryMenu={catMenu} />}
             />
 
             {/* Resolution history — full width and large, at the bottom. */}

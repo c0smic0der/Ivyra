@@ -17,7 +17,7 @@ import {
   type OutcomeFilter,
   type SortDir,
 } from "@/lib/insights/historyView";
-import { brierSentence } from "@/lib/scoring";
+import { brierSentence, brierTag } from "@/lib/scoring";
 import { Card } from "@/components/ui/Card";
 import { inputClasses } from "@/components/ui/input";
 
@@ -135,6 +135,7 @@ function FullHistory({
   const [dir, setDir] = useState<SortDir>("desc");
   const [page, setPage] = useState(1);
   const [expanded, setExpanded] = useState<string | null>(focusId);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const [result, setResult] = useState<FullResult>(initial);
   const [pending, startTransition] = useTransition();
@@ -261,15 +262,34 @@ function FullHistory({
         </div>
       )}
 
-      <Card as="div" className="mt-3">
-        <div className="flex flex-col gap-3">
-          <input
-            type="text"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search your predictions…"
-            className={inputClasses()}
-          />
+      {/* The search/filter bank collapses behind one affordance, expanding in
+          place — a small dot flags when filters are narrowing the list. */}
+      <div className="mt-3">
+        <button
+          type="button"
+          onClick={() => setFiltersOpen((o) => !o)}
+          aria-expanded={filtersOpen}
+          aria-controls="history-filter-bank"
+          className="inline-flex items-center gap-2 text-sm font-medium text-ink-secondary hover:text-ink"
+        >
+          <span>Search &amp; filter</span>
+          {manualActive && <span className="h-1.5 w-1.5 rounded-full bg-accent" aria-label="filters active" />}
+          <span className="text-xs text-ink-tertiary" aria-hidden>
+            {filtersOpen ? "▲" : "▼"}
+          </span>
+        </button>
+      </div>
+
+      {filtersOpen && (
+        <Card as="div" id="history-filter-bank" className="mt-3">
+          <div className="flex flex-col gap-3">
+            <input
+              type="text"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search your predictions…"
+              className={inputClasses()}
+            />
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <label className="flex flex-col gap-1 text-xs text-ink-tertiary">
               Category
@@ -318,17 +338,18 @@ function FullHistory({
               />
             </label>
           </div>
-          {manualActive && (
-            <button
-              type="button"
-              onClick={clearManualFilters}
-              className="self-start text-xs text-ink-tertiary hover:text-ink hover:underline"
-            >
-              Clear filters
-            </button>
-          )}
-        </div>
-      </Card>
+            {manualActive && (
+              <button
+                type="button"
+                onClick={clearManualFilters}
+                className="self-start text-xs text-ink-tertiary hover:text-ink hover:underline"
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
+        </Card>
+      )}
 
       <div className="mt-4 flex items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-tertiary">
@@ -409,9 +430,10 @@ function FullHistory({
 }
 
 /** A self-contained resolution card. Collapsed: the essentials (prediction,
- *  outcome, confidence, category, date, Brier + its directional sentence).
- *  Expanded in place: the complete frozen record — reasoning, plan/disconfirm,
- *  the outcome note, and the stored post-mortem. No link out. */
+ *  outcome, confidence, category, date, Brier + a scannable baseline tag).
+ *  Expanded in place: the complete frozen record — the full directional Brier
+ *  sentence, reasoning, plan/disconfirm, the outcome note, and the stored
+ *  post-mortem. No link out. */
 function HistoryCard({
   row,
   open,
@@ -421,7 +443,16 @@ function HistoryCard({
   open: boolean;
   onToggle: () => void;
 }) {
-  const scoreLine =
+  // The compressed, scannable tag for the collapsed row; the full directional
+  // sentence stays in the expanded view. Both derive from the same Brier.
+  const tag = brierTag(row.brier);
+  const brierColor =
+    tag === "beat the 50/50 baseline"
+      ? "text-success"
+      : tag === "worse than 50/50"
+        ? "text-danger"
+        : "text-ink-tertiary";
+  const fullScoreLine =
     row.status === "void"
       ? "Voided — excluded from your score."
       : row.brier !== null
@@ -447,8 +478,12 @@ function HistoryCard({
       >
         <div className="flex items-start justify-between gap-3">
           <p className="min-w-0 font-medium text-ink">{row.text}</p>
+          {/* Verdict + Brier, right-aligned in the existing success/danger colours. */}
           <span className="flex shrink-0 items-center gap-2">
             <OutcomeBadge status={row.status} outcome={row.outcome} />
+            {row.brier !== null && (
+              <span className={`text-xs font-semibold tabular-nums ${brierColor}`}>{row.brier.toFixed(2)}</span>
+            )}
             <span className="text-xs text-ink-tertiary" aria-hidden>
               {open ? "▲" : "▼"}
             </span>
@@ -465,11 +500,17 @@ function HistoryCard({
           {" · resolved "}
           {fmtDate(row.resolvedAt)}
         </p>
-        {scoreLine && <p className="mt-1 text-xs text-ink-secondary">{scoreLine}</p>}
+        {/* The scannable one-phrase tag (compressed from the full sentence below). */}
+        {tag && <p className={`mt-1 text-xs font-medium ${brierColor}`}>{tag}</p>}
+        {row.status === "void" && <p className="mt-1 text-xs text-ink-tertiary">Voided — excluded from your score.</p>}
       </button>
 
       {open && (
         <div id={panelId} className="flex flex-col gap-4 border-t border-border-subtle px-4 py-4 text-sm">
+          {/* The full directional Brier sentence — the collapsed row shows only its
+              compressed tag. */}
+          {fullScoreLine && <p className="text-ink-secondary">{fullScoreLine}</p>}
+
           {row.reasoning?.trim() || row.planOrDisconfirm?.trim() ? (
             <div>
               <p className="text-xs font-medium uppercase tracking-wide text-ink-tertiary">

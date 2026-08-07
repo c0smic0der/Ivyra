@@ -8,7 +8,6 @@
 import {
   BASELINE_BRIER,
   BIAS_UNLOCK_N,
-  biasByGroup,
   biasScore,
   biasSentence,
   boldness,
@@ -17,6 +16,7 @@ import {
   brierSentence,
   bucketIndex,
   calibrationBuckets,
+  calibrationByGroup,
   CURVE_UNLOCK_N,
   ewmaBrierTrend,
   PROGRESS_UNLOCK_N,
@@ -88,11 +88,20 @@ export interface ProgressPoint {
   resolvedDate: string;
 }
 
-export interface BiasBreakdownRow {
+/**
+ * One row of the "where the overconfidence lives" category breakdown. Carries
+ * the whole per-category calibration picture (not just the signed bias) so the
+ * bar can be sized and the hover line — "n=9 · says 81% · lands 48%" — reads
+ * straight from these figures, all produced by `calibrationByGroup` in the
+ * scoring module.
+ */
+export interface CategoryBiasRow {
   key: string;
   n: number;
+  /** `meanConfidence − hitRate`; positive ⇒ overconfident in this category. */
   bias: number;
-  sentence: string;
+  meanConfidence: number;
+  hitRate: number;
 }
 
 export interface InsightsViewModel {
@@ -108,14 +117,17 @@ export interface InsightsViewModel {
     sentence: string | null;
     // By category only. The reasoning-type breakdown is intentionally NOT
     // surfaced — its taxonomy is internal (it drives the AI insight); the user
-    // never sees a coined reasoning-style label.
-    byCategory: BiasBreakdownRow[];
+    // never sees a coined reasoning-style label. Sorted by |bias| descending —
+    // where the overconfidence lives, loudest first.
+    byCategory: CategoryBiasRow[];
   };
 
   curve: {
     unlocked: boolean;
     unlockSentence: string | null;
     points: CalibrationPoint[];
+    /** One shared reading of the whole curve (dots below/above the line), or null when locked. */
+    caption: string | null;
   };
 
   /**
@@ -154,8 +166,46 @@ function progressCopy(current: number, threshold: number, subject: string): stri
   return `${current} of ${threshold} resolutions until your ${subject} unlocks.`;
 }
 
-function toBreakdownRows(groups: ReturnType<typeof biasByGroup>): BiasBreakdownRow[] {
-  return groups.map((g) => ({ ...g, sentence: biasSentence(g.bias) }));
+/**
+ * The per-category calibration rows for the breakdown, sorted by absolute bias
+ * descending (largest miscalibration first). Built from `calibrationByGroup`
+ * (not `biasByGroup`) so each row carries the hit rate and mean confidence the
+ * hover line reads from — the scoring module computes every figure.
+ */
+function toCategoryRows(rows: ReturnType<typeof calibrationByGroup>): CategoryBiasRow[] {
+  return rows
+    .map((r) => ({
+      key: r.key,
+      n: r.n,
+      bias: r.bias,
+      meanConfidence: r.meanConfidence,
+      hitRate: r.hitRate,
+    }))
+    .sort((a, b) => Math.abs(b.bias) - Math.abs(a.bias));
+}
+
+/** Buckets within this of the diagonal read as "on the line" (float/noise guard). */
+const CURVE_CAPTION_EPS = 0.005;
+
+/**
+ * One shared reading of the whole calibration curve for the caption under the
+ * evidence band: are more of the user's confidence bands landing below the
+ * diagonal (things happen less often than stated) or above it? Counts buckets,
+ * states the frequency relationship, and stops (CLAUDE.md copy rule) — never
+ * evaluates whether any call was good. `null` for an empty curve.
+ */
+export function curveCaption(points: CalibrationPoint[]): string | null {
+  if (points.length === 0) return null;
+  const total = points.length;
+  const below = points.filter((p) => p.y < p.x - CURVE_CAPTION_EPS).length;
+  const above = points.filter((p) => p.y > p.x + CURVE_CAPTION_EPS).length;
+  if (below > above) {
+    return `In ${below} of your ${total} confidence bands, things happened less often than you said — those dots sit below the line.`;
+  }
+  if (above > below) {
+    return `In ${above} of your ${total} confidence bands, things happened more often than you said — those dots sit above the line.`;
+  }
+  return "Your dots sit about evenly above and below the line — your stated confidence and how often things happen track each other.";
 }
 
 function toHistoryItem(p: InsightsInput & { outcome: boolean }): HistoryItemLite {
@@ -271,13 +321,14 @@ export function buildInsightsViewModel(preds: InsightsInput[]): InsightsViewMode
       unlockSentence: biasUnlocked ? null : progressCopy(n, BIAS_UNLOCK_N, "bias score"),
       value: biasValue,
       sentence: biasValue === null ? null : biasSentence(biasValue),
-      byCategory: toBreakdownRows(biasByGroup(resolved, (p) => p.category)),
+      byCategory: toCategoryRows(calibrationByGroup(resolved, (p) => p.category)),
     },
 
     curve: {
       unlocked: curveUnlocked,
       unlockSentence: curveUnlocked ? null : progressCopy(n, CURVE_UNLOCK_N, "curve"),
       points,
+      caption: curveUnlocked ? curveCaption(points) : null,
     },
 
     boldness: {

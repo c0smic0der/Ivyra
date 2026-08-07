@@ -1,4 +1,4 @@
-import type { FrequencyGap, Profile } from "@/lib/scoring";
+import type { FrequencyGap, Profile, VerdictTrend } from "@/lib/scoring";
 
 // The one-line headline verdict at the top of /insights — a deterministic,
 // templated read of the user's own numbers (NOT an AI narration and NOT a score:
@@ -114,6 +114,22 @@ export function buildVerdict(input: {
     sub: "The gap between the confidence you state and how often it happens is still wide.",
     tone: "caution",
   };
+}
+
+/**
+ * The verdict hero's sub-line: how the calibration gap moved over the last
+ * `ROLLING_WINDOW` resolutions versus lifetime (from the scoring module's
+ * `verdictTrend`). Reports the direction and the size of the move in points and
+ * stops — a delta, never a judgment (CLAUDE.md copy rule). The caller renders
+ * nothing when `verdictTrend` returned null (below the sample floor).
+ */
+export function verdictTrendSentence(trend: VerdictTrend): string {
+  if (trend.direction === "steady") {
+    return "The gap between your confidence and outcomes has held steady over your last 20.";
+  }
+  const verb = trend.direction === "narrowed" ? "narrowed" : "widened";
+  const unit = trend.points === 1 ? "point" : "points";
+  return `The gap has ${verb} ${trend.points} ${unit} over your last 20.`;
 }
 
 /** A short, neutral status word — used only as an sr-only label on the status dot

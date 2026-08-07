@@ -50,6 +50,8 @@ where user-facing) · Vercel (+ Cron) · Resend · Recharts
   API keys server-side only.
 - Write tests for scoring logic and server actions. Run `npm test` before
   declaring any task done. Show evidence (test output), don't claim success.
+- Dev-only tooling (test renderers, linters) is exempt from the no-new-dependencies
+  rule; runtime and bundled dependencies still require approval.
 
 ## Logging rules
 - Never log user-entered content (claims, reasoning, notes) to stdout, CI, or server logs; log IDs and counts.

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Space_Grotesk } from "next/font/google";
+import { Fraunces, Geist, Geist_Mono, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { Footer } from "@/components/Footer";
 import { ServiceWorkerRegister } from "./service-worker-register";
@@ -22,6 +22,15 @@ const spaceGrotesk = Space_Grotesk({
   weight: ["500", "600"],
 });
 
+// The editorial "voice" serif — used only for the insights verdict hero and the
+// coach's-note blockquote, where the app speaks in prose rather than reporting a
+// figure. Optical/soft display serif; deliberately distinct from the Geist body.
+const fraunces = Fraunces({
+  variable: "--font-fraunces",
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+});
+
 export const metadata: Metadata = {
   title: "Ivyra",
   description:
@@ -36,7 +45,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable} ${fraunces.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         {children}

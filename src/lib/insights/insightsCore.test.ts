@@ -14,7 +14,7 @@ import {
   rollingBrier,
   runningBrier,
 } from "@/lib/scoring";
-import { buildInsightsViewModel, type InsightsInput } from "./insightsCore";
+import { buildInsightsViewModel, type CalibrationPoint, curveCaption, type InsightsInput } from "./insightsCore";
 
 const CATEGORIES = ["work", "health"];
 const REASONING_TYPES = ["gut_feel", "specific_evidence"];
@@ -331,5 +331,42 @@ describe("buildInsightsViewModel — determinism", () => {
   it("identical input produces deep-equal output", () => {
     const preds = resolvedFixture(20);
     expect(buildInsightsViewModel(preds)).toEqual(buildInsightsViewModel(preds));
+  });
+});
+
+describe("curveCaption (shared evidence-band reading)", () => {
+  const pt = (x: number, y: number): CalibrationPoint => ({
+    x,
+    y,
+    n: 5,
+    low: 0,
+    high: 1,
+    predictions: [],
+  });
+
+  it("returns null for an empty curve", () => {
+    expect(curveCaption([])).toBeNull();
+  });
+
+  it("reads a mostly-below-the-line curve as happening less often than stated", () => {
+    const caption = curveCaption([pt(0.7, 0.4), pt(0.8, 0.5), pt(0.9, 0.95)]);
+    expect(caption).toContain("2 of your 3");
+    expect(caption).toContain("below the line");
+  });
+
+  it("reads a mostly-above-the-line curve as happening more often than stated", () => {
+    const caption = curveCaption([pt(0.3, 0.6), pt(0.4, 0.7), pt(0.6, 0.55)]);
+    expect(caption).toContain("2 of your 3");
+    expect(caption).toContain("above the line");
+  });
+
+  it("reads an evenly-split curve as tracking each other", () => {
+    const caption = curveCaption([pt(0.3, 0.6), pt(0.8, 0.5)]);
+    expect(caption).toContain("track each other");
+  });
+
+  it("treats a dot within the epsilon of the diagonal as on the line", () => {
+    // Both dots essentially on the diagonal → neither below nor above → even.
+    expect(curveCaption([pt(0.5, 0.502), pt(0.7, 0.699)])).toContain("track each other");
   });
 });

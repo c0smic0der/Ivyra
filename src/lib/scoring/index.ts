@@ -59,6 +59,16 @@ export const PROGRESS_UNLOCK_N = 25;
  */
 export const ROLLING_WINDOW = 20;
 
+/**
+ * Resolutions needed before `verdictTrend` reads a recent-vs-lifetime move. A
+ * trailing window equals the lifetime mean until there's a tail beyond it, so
+ * the floor is DERIVED as `ROLLING_WINDOW` plus a small tail — never a bare
+ * constant that could silently drift from the window it depends on. (It happens
+ * to equal `PROGRESS_UNLOCK_N`, but the two are independent gates: don't couple
+ * them.)
+ */
+export const VERDICT_TREND_UNLOCK_N = ROLLING_WINDOW + 5;
+
 const NUM_BUCKETS = 10;
 
 // --- internals -------------------------------------------------------------
@@ -216,6 +226,43 @@ export function frequencyGap(preds: Scorable[]): FrequencyGap | null {
 export function biasScore(preds: Scorable[]): number | null {
   const gap = frequencyGap(preds);
   return gap === null ? null : gap.meanConfidence - gap.actualFrequency;
+}
+
+/** Which way the calibration gap moved over the recent window vs. lifetime. */
+export type TrendDirection = "narrowed" | "widened" | "steady";
+
+/** A recent-vs-lifetime read of the calibration gap (see `verdictTrend`). */
+export interface VerdictTrend {
+  direction: TrendDirection;
+  /** Size of the move in whole points (0 only when `direction` is "steady"). */
+  points: number;
+}
+
+/**
+ * How the calibration GAP moved over the last `window` resolutions versus the
+ * lifetime record. "Gap" is `|biasScore|` — the distance between stated
+ * confidence and observed frequency, regardless of direction (so an over→under
+ * flip reads honestly as the distance-from-perfect it is, not a phantom
+ * improvement). Positive Δ (recent gap larger) ⇒ "widened"; negative ⇒
+ * "narrowed"; a move that rounds to zero points ⇒ "steady" (the half-point
+ * rounding IS the deadband — no separate threshold to drift).
+ *
+ * `null` below `VERDICT_TREND_UNLOCK_N`: with too short a tail beyond the window
+ * the recent slice is nearly the whole record and the comparison is noise, so
+ * the caller omits the sub-line entirely rather than showing a placeholder.
+ * Reports a delta and stops (CLAUDE.md copy rule).
+ */
+export function verdictTrend(preds: Scorable[], window = ROLLING_WINDOW): VerdictTrend | null {
+  const resolved = resolvedNonVoid(preds);
+  if (resolved.length < VERDICT_TREND_UNLOCK_N) return null;
+
+  const lifetimeGap = Math.abs(biasScore(resolved)!);
+  const recentGap = Math.abs(biasScore(resolved.slice(-window))!);
+  const delta = recentGap - lifetimeGap;
+  const points = Math.round(Math.abs(delta) * 100);
+
+  if (points === 0) return { direction: "steady", points: 0 };
+  return { direction: delta < 0 ? "narrowed" : "widened", points };
 }
 
 /** Bias score for one group (e.g. one category, one reasoning type). */
@@ -505,6 +552,20 @@ export function classifyProfile(stats: {
 // verdict flips only on a real move, not float noise.
 const BRIER_DEADBAND = 0.005;
 const BIAS_DEADBAND = 0.02; // 2 points
+
+/**
+ * A scannable one-phrase tag for a single resolved prediction's Brier, relative
+ * to the 0.25 coin-flip baseline — the compressed form of `brierSentence` for a
+ * history row. `< 0.25` beat the baseline, `> 0.25` did worse; exactly on it (or
+ * a void, `brier === null`) gets no tag. States a frequency relationship and
+ * stops (CLAUDE.md copy rule); the full sentence stays in the row's expanded view.
+ */
+export function brierTag(brier: number | null): string | null {
+  if (brier === null) return null;
+  if (brier < BASELINE_BRIER) return "beat the 50/50 baseline";
+  if (brier > BASELINE_BRIER) return "worse than 50/50";
+  return null;
+}
 
 /** One-line reading of a Brier score, relative to the 0.25 coin-flip baseline. */
 export function brierSentence(brier: number): string {

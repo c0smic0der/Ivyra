@@ -8,6 +8,7 @@ import {
   boldnessSentence,
   brierScore,
   brierSentence,
+  brierTag,
   calibrationBuckets,
   CURVE_UNLOCK_N,
   ece,
@@ -19,6 +20,8 @@ import {
   rollingBrierTrend,
   runningBrier,
   type Scorable,
+  VERDICT_TREND_UNLOCK_N,
+  verdictTrend,
 } from "@/lib/scoring";
 
 // Test helper: build a Scorable tersely. Outcome is a boolean (YES/NO);
@@ -477,5 +480,68 @@ describe("ewmaBrierTrend (recency-weighted 'recent form')", () => {
     const slow = ewmaBrierTrend(preds, 0.1).at(-1)!.value;
     const fast = ewmaBrierTrend(preds, 0.5).at(-1)!.value;
     expect(fast).toBeGreaterThan(slow); // fast weights the recent miss more
+  });
+});
+
+describe("brierTag (scannable per-row tag)", () => {
+  it("tags a sub-baseline Brier as beating 50/50", () => {
+    expect(brierTag(0.01)).toBe("beat the 50/50 baseline");
+    expect(brierTag(0.24)).toBe("beat the 50/50 baseline");
+  });
+
+  it("tags an above-baseline Brier as worse than 50/50", () => {
+    expect(brierTag(0.81)).toBe("worse than 50/50");
+    expect(brierTag(0.26)).toBe("worse than 50/50");
+  });
+
+  it("gives no tag exactly on the baseline", () => {
+    expect(brierTag(0.25)).toBeNull();
+  });
+
+  it("gives no tag for a void (null Brier)", () => {
+    expect(brierTag(null)).toBeNull();
+  });
+});
+
+describe("verdictTrend (recent-vs-lifetime gap move)", () => {
+  // 10 older overconfident (0.9→NO, gap 0.90) then 20 calibrated (0.6, 60% YES,
+  // gap 0). Lifetime gap 0.30; the recent 20 sit at 0 → the gap narrowed 30 pts.
+  const narrowing = [
+    ...Array.from({ length: 10 }, () => p(0.9, false)),
+    ...Array.from({ length: 20 }, (_, i) => p(0.6, i < 12)),
+  ];
+
+  // Mirror image: 10 older calibrated, then 20 recent overconfident. Recent gap
+  // 0.90 vs lifetime 0.60 → widened 30 pts.
+  const widening = [
+    ...Array.from({ length: 10 }, (_, i) => p(0.6, i < 6)),
+    ...Array.from({ length: 20 }, () => p(0.9, false)),
+  ];
+
+  it("reports a narrowing gap with its size in points", () => {
+    expect(verdictTrend(narrowing)).toEqual({ direction: "narrowed", points: 30 });
+  });
+
+  it("reports a widening gap with its size in points", () => {
+    expect(verdictTrend(widening)).toEqual({ direction: "widened", points: 30 });
+  });
+
+  it("reports steady when the recent gap matches lifetime (rounds to 0 points)", () => {
+    // 30 identical resolutions: every 20-tail has the same gap as the whole.
+    const steady = Array.from({ length: 30 }, () => p(0.8, true)); // gap |0.8−1| = 0.20 throughout
+    expect(verdictTrend(steady)).toEqual({ direction: "steady", points: 0 });
+  });
+
+  it("is null below the sample floor, so the caller omits the sub-line", () => {
+    const tooFew = Array.from({ length: VERDICT_TREND_UNLOCK_N - 1 }, () => p(0.9, false));
+    expect(verdictTrend(tooFew)).toBeNull();
+    // One more resolution crosses the floor.
+    expect(verdictTrend([...tooFew, p(0.9, false)])).not.toBeNull();
+  });
+
+  it("counts only resolved, non-void predictions toward the floor", () => {
+    const resolved = Array.from({ length: VERDICT_TREND_UNLOCK_N - 1 }, () => p(0.9, false));
+    const withVoids = [...resolved, p(0.5, null, "void"), p(0.5, null, "void")];
+    expect(verdictTrend(withVoids)).toBeNull(); // voids don't lift it over the floor
   });
 });
