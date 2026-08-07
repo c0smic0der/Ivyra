@@ -265,6 +265,7 @@ One commit: `Reframe capture and resolve as journal entries; report calibration,
 | **Therapist / clinical mode** | Shelved | HIPAA and PHI exposure breaks the no-legal-work and near-zero-cost constraints. |
 | **Social / shared predictions** | Shelved | Real retention mechanism, but drags in invite flows and privacy work. The weekly ritual buys most of the benefit for a fraction of the scope. |
 | **RLS backstop** | Radar (post-ship) | App queries currently run on the privileged connection, so tenant isolation rests entirely on the app-layer `eq(user_id)` filter (RLS policies exist but are inert for this connection). Move user-facing reads/writes to an RLS-respecting connection, service role for cron/admin only. Defense in depth. |
+| **PWA installability** | Shelved 2026-08-07 | Custom install UI removed, manifest de-listed; icons retained in public/. Re-enable = restore manifest icons array + display standalone. Reason: install banner behavior is browser-controlled and nondeterministic on the dashboard surface; not worth polishing now. |
 
 ---
 

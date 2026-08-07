@@ -8,13 +8,15 @@ export default function manifest(): MetadataRoute.Manifest {
     description:
       "Log real-life predictions, resolve them, and score your calibration over time.",
     start_url: "/dashboard",
-    display: "standalone",
+    // PWA installability is shelved (see docs/04 §6). "browser" de-lists the app
+    // from install prompts; the icons array is intentionally omitted so no
+    // installable icon set is advertised. The tab/bookmark favicon and apple-icon
+    // (src/app/) are unaffected — those are separate from installability.
+    // Re-enable = display "standalone" + restore the icons array (assets remain
+    // in public/icon-192.png and public/icon-512.png).
+    display: "browser",
     background_color: "#ffffff",
     // Mirrors --color-accent in globals.css (a static manifest can't read the CSS var).
     theme_color: "#4f46e5",
-    icons: [
-      { src: "/icon-192.png", sizes: "192x192", type: "image/png" },
-      { src: "/icon-512.png", sizes: "512x512", type: "image/png" },
-    ],
   };
 }

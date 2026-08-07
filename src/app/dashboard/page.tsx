@@ -7,7 +7,6 @@ import { isDue } from "@/lib/journal/journalView";
 import { Card } from "@/components/ui/Card";
 import { Header } from "@/components/Header";
 import { HowItWorksGate } from "@/components/HowItWorksGate";
-import { InstallPrompt } from "./InstallPrompt";
 import { OnboardingBanner } from "./OnboardingBanner";
 import { JournalTimeline } from "./JournalTimeline";
 import { QuickCapture } from "./QuickCapture";
@@ -69,8 +68,6 @@ export default async function DashboardPage() {
           >
             Prefer the full form?
           </Link>
-
-          <InstallPrompt hasAnyPrediction={hasAnyEntry} />
 
           {/* Timeline (main) with the resolve queue beside it. */}
           <div className="mt-10 grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_18rem]">
