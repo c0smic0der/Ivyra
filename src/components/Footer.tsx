@@ -16,7 +16,7 @@ export function Footer() {
     <footer className="mt-auto border-t border-border-subtle">
       <div className="mx-auto flex w-full max-w-5xl flex-col items-center gap-3 px-6 py-8 text-xs text-ink-tertiary sm:flex-row sm:justify-between lg:px-8">
         <p>
-          <span className="text-ink-secondary">Ivyra</span> — a decision journal. © {year}.
+          <span className="text-ink-secondary">Ivyra</span> © {year}.
         </p>
         <nav className="flex items-center gap-5">
           {LINKS.map((link) => (
