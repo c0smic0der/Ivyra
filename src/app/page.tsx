@@ -179,19 +179,19 @@ export default async function Home({
           <span className="flex items-center gap-2.5">
             <BrandMark className="h-8 w-8 shrink-0" />
             <span className="font-wordmark text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
-              Ivyra
+              Ivyra<span className="text-accent">.</span>
             </span>
           </span>
-          <div className="flex flex-col items-end gap-1.5">
-            <div className="flex items-center gap-4 sm:gap-5">
-              <Link href="/how-it-works" className="text-sm text-ink-secondary transition-colors hover:text-ink">
-                How it works
-              </Link>
-              <SignInButton size="md">Get started</SignInButton>
+          <div className="flex items-center gap-4 sm:gap-5">
+            <Link href="/how-it-works" className="text-sm text-ink-secondary transition-colors hover:text-ink">
+              How it works
+            </Link>
+            <div className="relative">
+              <SignInButton size="md">Get started →</SignInButton>
+              <p className="absolute left-1/2 top-full mt-1.5 -translate-x-1/2 whitespace-nowrap text-[10px] text-ink-tertiary">
+                No passwords, just a magic link
+              </p>
             </div>
-            <p className="text-[10px] text-ink-tertiary">
-              Private by default · No passwords, just a magic link
-            </p>
           </div>
         </div>
       </header>
@@ -203,10 +203,7 @@ export default async function Home({
         <section className="w-full bg-gradient-to-b from-accent-tint/60 to-transparent">
           <div className="mx-auto grid w-full max-w-5xl grid-cols-1 items-center gap-12 px-6 pb-16 pt-10 lg:grid-cols-2 lg:pb-24 lg:pt-14">
             <div className="animate-fade-up">
-              <span className="inline-block rounded-full border border-border bg-canvas px-3 py-1 text-xs font-medium text-ink-secondary">
-                A journal that keeps score
-              </span>
-              <h1 className="mt-4 text-4xl font-semibold leading-[1.1] tracking-tight text-ink sm:text-5xl">
+              <h1 className="text-4xl font-semibold leading-[1.1] tracking-tight text-ink sm:text-5xl">
                 A journal for what you think will happen — and how often you&apos;re right.
               </h1>
               <p className="mt-5 max-w-xl text-lg leading-relaxed text-ink-secondary">

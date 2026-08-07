@@ -94,7 +94,7 @@ export default async function HowItWorksPage() {
 
   return (
     <>
-      <Header />
+      <Header showGetStarted />
       <MarkSeen />
       <main className="page-gradient flex flex-1 justify-center px-6 py-10 lg:px-8">
         <div className="w-full max-w-5xl">
