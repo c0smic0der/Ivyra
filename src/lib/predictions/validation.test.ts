@@ -21,9 +21,8 @@ function today(): string {
 }
 
 const validBase = {
-  decisionOrClaim: "The kitchen reno finishes by Aug 15",
-  criterion: "The kitchen reno finishes by Aug 15",
-  predictionKind: "self" as const,
+  decision: "I turn down the contract",
+  criterion: "They come back with a better offer by Friday",
   confidencePercent: 70,
   resolutionDate: tomorrow(),
 };
@@ -89,52 +88,49 @@ describe("validateCreatePredictionInput — resolution date can’t be in the pa
   });
 });
 
-describe("validateCreatePredictionInput — prediction_kind", () => {
-  it("accepts 'self'", () => {
-    const r = validateCreatePredictionInput({ ...validBase, predictionKind: "self" });
-    expect(r.success).toBe(true);
-  });
-
-  it("accepts 'world'", () => {
-    const r = validateCreatePredictionInput({ ...validBase, predictionKind: "world" });
-    expect(r.success).toBe(true);
-  });
-
-  it("rejects any other value", () => {
-    const r = validateCreatePredictionInput({ ...validBase, predictionKind: "bogus" });
+describe("validateCreatePredictionInput — decision, criterion, and optional reasoning fields", () => {
+  it("rejects empty decision", () => {
+    const r = validateCreatePredictionInput({ ...validBase, decision: "" });
     expect(r.success).toBe(false);
+    expect(r.fieldErrors?.decision).toBeTruthy();
   });
-});
 
-describe("validateCreatePredictionInput — decisionOrClaim, criterion, and optional reasoning fields", () => {
-  it("rejects empty decisionOrClaim", () => {
-    const r = validateCreatePredictionInput({ ...validBase, decisionOrClaim: "" });
+  it("rejects whitespace-only decision", () => {
+    const r = validateCreatePredictionInput({ ...validBase, decision: "   " });
     expect(r.success).toBe(false);
+    expect(r.fieldErrors?.decision).toBeTruthy();
   });
 
-  it("rejects whitespace-only decisionOrClaim", () => {
-    const r = validateCreatePredictionInput({ ...validBase, decisionOrClaim: "   " });
-    expect(r.success).toBe(false);
-  });
-
-  it("rejects decisionOrClaim over the max length", () => {
-    const r = validateCreatePredictionInput({ ...validBase, decisionOrClaim: "a".repeat(2001) });
+  it("rejects decision over the max length", () => {
+    const r = validateCreatePredictionInput({ ...validBase, decision: "a".repeat(2001) });
     expect(r.success).toBe(false);
   });
 
   it("rejects empty criterion", () => {
     const r = validateCreatePredictionInput({ ...validBase, criterion: "" });
     expect(r.success).toBe(false);
+    expect(r.fieldErrors?.criterion).toBeTruthy();
   });
 
   it("rejects whitespace-only criterion", () => {
     const r = validateCreatePredictionInput({ ...validBase, criterion: "   " });
     expect(r.success).toBe(false);
+    expect(r.fieldErrors?.criterion).toBeTruthy();
   });
 
   it("rejects criterion over the max length", () => {
     const r = validateCreatePredictionInput({ ...validBase, criterion: "a".repeat(2001) });
     expect(r.success).toBe(false);
+  });
+
+  it("rejects each field independently — an invalid decision alone does not flag criterion, and vice versa", () => {
+    const badDecision = validateCreatePredictionInput({ ...validBase, decision: "   " });
+    expect(badDecision.fieldErrors?.decision).toBeTruthy();
+    expect(badDecision.fieldErrors?.criterion).toBeFalsy();
+
+    const badCriterion = validateCreatePredictionInput({ ...validBase, criterion: "   " });
+    expect(badCriterion.fieldErrors?.criterion).toBeTruthy();
+    expect(badCriterion.fieldErrors?.decision).toBeFalsy();
   });
 
   it("accepts reasoning and planOrDisconfirm omitted", () => {
@@ -166,9 +162,8 @@ describe("validateCreatePredictionInput — full valid payload", () => {
     const r = validateCreatePredictionInput(validBase);
     expect(r.success).toBe(true);
     expect(r.data).toMatchObject({
-      decisionOrClaim: validBase.decisionOrClaim,
+      decision: validBase.decision,
       criterion: validBase.criterion,
-      predictionKind: "self",
       confidencePercent: 70,
       resolutionDate: validBase.resolutionDate,
     });

@@ -8,14 +8,15 @@ export const predictionKindValues = ["self", "world"] as const;
 
 export const createPredictionSchema = z
   .object({
-    // The two above-the-fold fields (docs/06-decision-layer.md §2.1). Whether this
-    // ends up a pure forecast or a decision entry is decided server-side by comparing
-    // them (see deriveDecisionAndText) — never here.
-    decisionOrClaim: z.string().trim().min(1, "This field is required").max(2000),
+    // The two above-the-fold fields (docs/06-decision-layer.md §2.1), both strictly
+    // required — every new entry is a decision. `decision` persists verbatim to the
+    // `decision` column; `criterion` persists to `text`, the scoreable claim (see
+    // deriveDecisionAndText). There is no longer a code path where either is optional
+    // or defaulted.
+    decision: z.string().trim().min(1, "This field is required").max(2000),
     criterion: z.string().trim().min(1, "This field is required").max(2000),
     reasoning: z.string().trim().max(1000).optional().or(z.literal("")),
     planOrDisconfirm: z.string().trim().max(1000).optional().or(z.literal("")),
-    predictionKind: z.enum(predictionKindValues),
     // UI sends a 1-99 integer (the slider); converted to a 0.01-0.99 DB
     // string by confidencePercentToDbString before it ever reaches Drizzle.
     confidencePercent: z.coerce

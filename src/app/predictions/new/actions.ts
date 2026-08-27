@@ -27,11 +27,10 @@ export async function createPrediction(
   }
 
   const validated = validateCreatePredictionInput({
-    decisionOrClaim: formData.get("decisionOrClaim"),
+    decision: formData.get("decision"),
     criterion: formData.get("criterion"),
     reasoning: formData.get("reasoning"),
     planOrDisconfirm: formData.get("planOrDisconfirm"),
-    predictionKind: formData.get("predictionKind"),
     confidencePercent: formData.get("confidencePercent"),
     resolutionDate: formData.get("resolutionDate"),
   });
@@ -41,10 +40,11 @@ export async function createPrediction(
   }
   const input = validated.data!;
 
-  // The above-the-fold split (docs/06-decision-layer.md §2.1): identical fields ⇒ a
-  // pure forecast (decision null); differing fields ⇒ a decision entry. The scoreable
-  // claim is always `text`. This is the ONLY place that assignment happens.
-  const { decision, text } = deriveDecisionAndText(input.decisionOrClaim, input.criterion);
+  // The above-the-fold pairing (docs/06-decision-layer.md §2.1): the first field is
+  // always the decision, the second — always the scoreable claim — is `text`. Both
+  // are required at validation, so `decision` is never null here. This is the ONLY
+  // place that assignment happens.
+  const { decision, text } = deriveDecisionAndText(input.decision, input.criterion);
 
   // Write the row immediately — status=open, criteria frozen at creation.
   // category/reasoningType/embedding start null and are enriched below,
@@ -62,9 +62,11 @@ export async function createPrediction(
         reasoning: input.reasoning || null,
         planOrDisconfirm: input.planOrDisconfirm || null,
         // prediction_kind is DERIVED through kindFor, never set inline — the one
-        // rule for kind (CLAUDE.md). A non-null decision forces 'self' regardless
-        // of the chosen self/world toggle.
-        predictionKind: kindFor({ decision, predictionKind: input.predictionKind }),
+        // rule for kind (CLAUDE.md). `decision` is always non-null now (every new
+        // entry is a decision), so kindFor always resolves 'self' here; the literal
+        // "self" below is inert — kindFor's own rule decides the value, never this
+        // call site. The world branch stays alive in kind.ts for legacy rows.
+        predictionKind: kindFor({ decision, predictionKind: "self" }),
         confidence: confidencePercentToDbString(input.confidencePercent),
         resolutionDate: input.resolutionDate,
         status: "open",

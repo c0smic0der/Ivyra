@@ -2,9 +2,10 @@ import { config } from "dotenv";
 // Load .env.local so this runs locally against the real DB; without DATABASE_URL
 // (e.g. CI with no database) the suite below skips, matching the opt-in-live
 // convention in the other *.integration.test.ts files. This exercises the REAL
-// createPrediction Server Action end to end — the split logic (deriveDecisionAndText)
+// createPrediction Server Action end to end — the pairing logic (deriveDecisionAndText)
 // is unit-tested in isolation, but only a real insert proves the decision/text/
-// prediction_kind columns land correctly together.
+// prediction_kind columns land correctly together, and that a rejected save writes
+// nothing at all.
 config({ path: ".env.local" });
 
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
@@ -51,7 +52,6 @@ vi.mock("next/server", () => ({ after: afterMock }));
   function fields(overrides: Record<string, string>): FormData {
     const fd = new FormData();
     const base = {
-      predictionKind: "world",
       confidencePercent: "65",
       resolutionDate: "2030-01-01",
       reasoning: "",
@@ -72,32 +72,12 @@ vi.mock("next/server", () => ({ after: afterMock }));
     await db.delete(schema.predictions).where(eq(schema.predictions.userId, userId));
   });
 
-  it("collapses identical above-fold fields to a pure forecast, above-fold-only (no reasoning/plan)", async () => {
+  it("persists the first field to decision and the second to text, above-fold-only, forcing kind 'self'", async () => {
     const { createPrediction, db, schema, and, eq } = await deps();
     getUser.mockResolvedValue({ data: { user: { id: userId } } });
 
     const fd = fields({
-      decisionOrClaim: "integration forecast claim",
-      criterion: "integration forecast claim",
-    });
-
-    await expect(createPrediction({}, fd)).rejects.toThrow("REDIRECT:/dashboard");
-
-    const [row] = await db
-      .select()
-      .from(schema.predictions)
-      .where(and(eq(schema.predictions.userId, userId), eq(schema.predictions.text, "integration forecast claim")));
-    expect(row.decision).toBeNull();
-    expect(row.text).toBe("integration forecast claim");
-    expect(row.predictionKind).toBe("world");
-  });
-
-  it("splits differing above-fold fields into decision and text, forcing kind 'self'", async () => {
-    const { createPrediction, db, schema, and, eq } = await deps();
-    getUser.mockResolvedValue({ data: { user: { id: userId } } });
-
-    const fd = fields({
-      decisionOrClaim: "integration decision text",
+      decision: "integration decision text",
       criterion: "integration criterion text",
     });
 
@@ -110,5 +90,27 @@ vi.mock("next/server", () => ({ after: afterMock }));
     expect(row.decision).toBe("integration decision text");
     expect(row.text).toBe("integration criterion text");
     expect(row.predictionKind).toBe("self");
+  });
+
+  it("rejects an empty criterion and writes no row — no code path can produce a partial or decision-null row", async () => {
+    const { createPrediction, db, schema, and, eq } = await deps();
+    getUser.mockResolvedValue({ data: { user: { id: userId } } });
+
+    const fd = fields({
+      decision: "integration rejected decision",
+      criterion: "",
+    });
+
+    const result = await createPrediction({}, fd);
+    expect(result.fieldErrors?.criterion).toBeTruthy();
+    expect(redirectMock).not.toHaveBeenCalled();
+
+    const rows = await db
+      .select()
+      .from(schema.predictions)
+      .where(
+        and(eq(schema.predictions.userId, userId), eq(schema.predictions.decision, "integration rejected decision")),
+      );
+    expect(rows).toHaveLength(0);
   });
 });

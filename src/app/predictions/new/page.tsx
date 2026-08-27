@@ -84,7 +84,6 @@ export default async function NewPredictionPage({
             <PredictionForm
               key={templateKey ?? "blank"}
               initialText={initial?.text}
-              initialKind={initial?.kind}
               initialConfidence={initial?.confidence}
             />
           </Card>

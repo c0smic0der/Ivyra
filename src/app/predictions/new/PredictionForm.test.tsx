@@ -1,14 +1,30 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 
 // The real Server Action touches Supabase/Drizzle — stub it so these tests exercise
-// only client-side form state (the auto-mirror machine and the live label), never a
-// real submission. Same stubbing approach as ResolutionHistory.filters.test.tsx.
-vi.mock("./actions", () => ({
-  createPrediction: async () => ({}),
-}));
+// only client-side form behavior, never a real submission. The stub delegates to the
+// REAL validateCreatePredictionInput (pure, no I/O) so the rejection tests below
+// exercise the actual required-field rule end to end (fill → submit → see the error
+// in the DOM), not just a statically-asserted schema call. Same stubbing approach as
+// ResolutionHistory.filters.test.tsx.
+vi.mock("./actions", async () => {
+  const { validateCreatePredictionInput } = await import("@/lib/predictions/validation");
+  return {
+    createPrediction: async (_prevState: unknown, formData: FormData) => {
+      const validated = validateCreatePredictionInput({
+        decision: formData.get("decision"),
+        criterion: formData.get("criterion"),
+        reasoning: formData.get("reasoning"),
+        planOrDisconfirm: formData.get("planOrDisconfirm"),
+        confidencePercent: formData.get("confidencePercent"),
+        resolutionDate: formData.get("resolutionDate"),
+      });
+      return validated.success ? {} : { fieldErrors: validated.fieldErrors };
+    },
+  };
+});
 // The track-record panel debounces a Server Action call keyed on the criterion
 // text; stub it so no real call fires during these interactions.
 vi.mock("./trackRecordAction", () => ({
@@ -19,52 +35,77 @@ import { PredictionForm } from "./PredictionForm";
 
 afterEach(cleanup);
 
-describe("PredictionForm — auto-mirror between decisionOrClaim and criterion", () => {
-  it("engages: typing into the first field propagates to the second while mirrored", () => {
-    render(<PredictionForm />);
-    const decisionInput = screen.getByLabelText(/what are you deciding, or what do you expect/i);
-    const criterionInput = screen.getByLabelText(/how will you know it went well/i);
+function fillValidDate(container: HTMLElement) {
+  const dateInput = container.querySelector("#resolutionDate") as HTMLInputElement;
+  fireEvent.change(dateInput, { target: { value: "2099-01-01" } });
+}
 
-    fireEvent.change(decisionInput, { target: { value: "I move to Denver" } });
-    expect(criterionInput).toHaveValue("I move to Denver");
+describe("PredictionForm — capture requires both above-the-fold fields, independently", () => {
+  it("rejects a whitespace-only decision while a valid criterion is untouched", async () => {
+    const { container } = render(<PredictionForm />);
+    fillValidDate(container);
+    fireEvent.change(screen.getByLabelText(/what are you deciding/i), { target: { value: "   " } });
+    fireEvent.change(screen.getByLabelText(/how will you know it went well/i), {
+      target: { value: "They send an offer by Friday" },
+    });
+    fireEvent.submit(container.querySelector("form")!);
 
-    fireEvent.change(decisionInput, { target: { value: "I move to Denver this fall" } });
-    expect(criterionInput).toHaveValue("I move to Denver this fall");
+    const decisionField = screen.getByLabelText(/what are you deciding/i).closest("div")!;
+    const criterionField = screen.getByLabelText(/how will you know it went well/i).closest("div")!;
+    await within(decisionField).findByText(/this field is required/i);
+    expect(within(criterionField).queryByText(/this field is required/i)).not.toBeInTheDocument();
   });
 
-  it("breaks permanently once the second field is edited directly", () => {
-    render(<PredictionForm />);
-    const decisionInput = screen.getByLabelText(/what are you deciding, or what do you expect/i);
-    const criterionInput = screen.getByLabelText(/how will you know it went well/i);
+  it("rejects a whitespace-only criterion while a valid decision is untouched", async () => {
+    const { container } = render(<PredictionForm />);
+    fillValidDate(container);
+    fireEvent.change(screen.getByLabelText(/what are you deciding/i), {
+      target: { value: "I turn down the contract" },
+    });
+    fireEvent.change(screen.getByLabelText(/how will you know it went well/i), { target: { value: "   " } });
+    fireEvent.submit(container.querySelector("form")!);
 
-    fireEvent.change(decisionInput, { target: { value: "I move to Denver" } });
-    expect(criterionInput).toHaveValue("I move to Denver");
+    const decisionField = screen.getByLabelText(/what are you deciding/i).closest("div")!;
+    const criterionField = screen.getByLabelText(/how will you know it went well/i).closest("div")!;
+    await within(criterionField).findByText(/this field is required/i);
+    expect(within(decisionField).queryByText(/this field is required/i)).not.toBeInTheDocument();
+  });
 
-    // Editing the second field directly breaks the link.
-    fireEvent.change(criterionInput, { target: { value: "I sign a lease within 60 days" } });
-    expect(criterionInput).toHaveValue("I sign a lease within 60 days");
+  it("rejects an empty decision", async () => {
+    const { container } = render(<PredictionForm />);
+    fillValidDate(container);
+    fireEvent.change(screen.getByLabelText(/how will you know it went well/i), {
+      target: { value: "They send an offer by Friday" },
+    });
+    fireEvent.submit(container.querySelector("form")!);
 
-    // Further edits to the first field no longer touch the second.
-    fireEvent.change(decisionInput, { target: { value: "I move to Denver and buy a car" } });
-    expect(decisionInput).toHaveValue("I move to Denver and buy a car");
-    expect(criterionInput).toHaveValue("I sign a lease within 60 days");
+    const decisionField = screen.getByLabelText(/what are you deciding/i).closest("div")!;
+    await within(decisionField).findByText(/this field is required/i);
+  });
+
+  it("succeeds with both fields filled, above-fold-only (no reasoning/plan)", async () => {
+    const { container } = render(<PredictionForm />);
+    fillValidDate(container);
+    fireEvent.change(screen.getByLabelText(/what are you deciding/i), {
+      target: { value: "I turn down the contract" },
+    });
+    fireEvent.change(screen.getByLabelText(/how will you know it went well/i), {
+      target: { value: "They send an offer by Friday" },
+    });
+    fireEvent.submit(container.querySelector("form")!);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /save prediction/i })).not.toBeDisabled();
+    });
+    expect(screen.queryByText(/this field is required/i)).not.toBeInTheDocument();
   });
 });
 
-describe("PredictionForm — planOrDisconfirm label follows kindFor live", () => {
-  it("switches to the decision label as decisionOrClaim fills, and back as it clears", () => {
-    const { container } = render(<PredictionForm initialKind="world" />);
-    const decisionInput = screen.getByLabelText(/what are you deciding, or what do you expect/i);
-    const planLabel = () => container.querySelector('label[for="planOrDisconfirm"]')!;
-
-    // Starts on the world branch (no decision typed yet).
-    expect(planLabel().textContent).toMatch(/what would change your mind\?/i);
-
-    fireEvent.change(decisionInput, { target: { value: "I turn down the offer" } });
-    expect(planLabel().textContent).toMatch(/what's your plan\?/i);
-
-    fireEvent.change(decisionInput, { target: { value: "" } });
-    expect(planLabel().textContent).toMatch(/what would change your mind\?/i);
+describe("PredictionForm — planOrDisconfirm label, decisions-only capture", () => {
+  it("always reads \"What's your plan?\" — every new entry is a decision (kindFor)", () => {
+    const { container } = render(<PredictionForm />);
+    const planLabel = container.querySelector('label[for="planOrDisconfirm"]')!;
+    expect(planLabel.textContent).toMatch(/what's your plan\?/i);
   });
 });
 
@@ -75,10 +116,12 @@ describe("PredictionForm — layout contract", () => {
     expect(container.querySelector("#planOrDisconfirm")).not.toBeRequired();
   });
 
-  it("requires the four above-the-fold fields", () => {
+  it("requires the above-the-fold fields, with §2.1's copy verbatim", () => {
     render(<PredictionForm />);
-    expect(screen.getByLabelText(/what are you deciding, or what do you expect/i)).toBeRequired();
-    expect(screen.getByLabelText(/how will you know it went well/i)).toBeRequired();
+    const decision = screen.getByLabelText(/what are you deciding\?/i);
+    const criterion = screen.getByLabelText(/how will you know it went well\?/i);
+    expect(decision).toBeRequired();
+    expect(criterion).toBeRequired();
     expect(screen.getByLabelText(/resolution date/i)).toBeRequired();
   });
 });
