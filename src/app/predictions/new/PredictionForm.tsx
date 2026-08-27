@@ -7,6 +7,7 @@ import { useTrackRecordPanel } from "./useTrackRecordPanel";
 import { buttonVariants } from "@/components/ui/button";
 import { inputClasses } from "@/components/ui/input";
 import { cx } from "@/components/ui/cx";
+import { kindFor } from "@/lib/predictions/kind";
 import { takeQuickDraft } from "@/lib/onboarding/quickCaptureDraft";
 
 const PLACEHOLDER_EXAMPLES = [
@@ -30,13 +31,22 @@ export function PredictionForm({
 }: PredictionFormProps) {
   const [state, formAction, pending] = useActionState(createPrediction, initialState);
   const [predictionKind, setPredictionKind] = useState<"self" | "world">(initialKind);
-  const [text, setText] = useState(initialText);
+  // The two above-the-fold fields (docs/06-decision-layer.md §2.1). `criterion`
+  // auto-mirrors `decisionOrClaim` while `mirrored` is true; a direct edit to
+  // `criterion` breaks the link permanently for this entry. Editing `decisionOrClaim`
+  // never breaks it — that's the mechanism that drives the mirror in the first place,
+  // which is what lets a plain forecast take only one field's worth of typing.
+  const [decisionOrClaim, setDecisionOrClaim] = useState(initialText);
+  const [criterion, setCriterion] = useState(initialText);
+  const [mirrored, setMirrored] = useState(true);
   const [confidence, setConfidence] = useState(initialConfidence);
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   // Today (UTC) is the earliest allowed resolution date — same-day predictions
   // are permitted; the server enforces the same >= today rule (validation.ts).
   const [minResolutionDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const { result: trackRecordResult } = useTrackRecordPanel(text);
+  // Matched against the user's resolved history — `criterion` is always the
+  // scoreable claim, whether or not this entry ends up a decision.
+  const { result: trackRecordResult } = useTrackRecordPanel(criterion);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -47,39 +57,87 @@ export function PredictionForm({
 
   // Pick up a draft handed off from the dashboard quick-capture box via
   // sessionStorage (never the URL). Only when the form isn't already prefilled by
-  // a template or explicit initial text. One-shot: takeQuickDraft clears it.
+  // a template or explicit initial text. One-shot: takeQuickDraft clears it. Seeds
+  // both fields (mirror stays engaged) so a quick-capture draft still collapses to
+  // a pure forecast unless the user goes on to edit the criterion.
   useEffect(() => {
     if (initialText) return;
     const stashed = takeQuickDraft(sessionStorage);
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time client-only seed on mount
-    if (stashed) setText(stashed);
+    if (stashed) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time client-only seed on mount
+      setDecisionOrClaim(stashed);
+      setCriterion(stashed);
+    }
   }, [initialText]);
 
+  function handleDecisionOrClaimChange(value: string) {
+    setDecisionOrClaim(value);
+    if (mirrored) setCriterion(value);
+  }
+
+  function handleCriterionChange(value: string) {
+    setCriterion(value);
+    setMirrored(false);
+  }
+
+  // Live-updates as decisionOrClaim fills or clears — independent of whether this
+  // will actually collapse to a null-decision forecast at save time (that's decided
+  // server-side by deriveDecisionAndText). Reuses kindFor, never reimplements the
+  // rule (CLAUDE.md: one MUST derive from the other).
+  const effectiveKind = kindFor({
+    decision: decisionOrClaim.trim() === "" ? null : decisionOrClaim,
+    predictionKind,
+  });
   const secondReasoningLabel =
-    predictionKind === "self" ? "What's your plan?" : "What would change your mind?";
+    effectiveKind === "self" ? "What's your plan?" : "What would change your mind?";
   const secondReasoningPlaceholder =
-    predictionKind === "self"
+    effectiveKind === "self"
       ? "I'll block out two hours every weekday morning to work on it."
       : "If the contractor tells me the permit was denied, I'd drop my confidence a lot.";
 
   return (
     <form action={formAction} className="flex flex-col gap-5">
       <div>
-        <label htmlFor="text" className="block text-sm font-medium text-ink">
-          What do you think will happen?
+        <label htmlFor="decisionOrClaim" className="block text-sm font-medium text-ink">
+          What are you deciding, or what do you expect?
         </label>
+        <p className="mt-1 text-sm text-ink-secondary">
+          A choice you&apos;re making, or a call about how something goes.
+        </p>
         <textarea
-          id="text"
-          name="text"
+          id="decisionOrClaim"
+          name="decisionOrClaim"
           required
           rows={3}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
+          value={decisionOrClaim}
+          onChange={(e) => handleDecisionOrClaimChange(e.target.value)}
           placeholder={PLACEHOLDER_EXAMPLES[placeholderIndex]}
-          className={inputClasses("mt-1")}
+          className={inputClasses("mt-2")}
         />
-        {state.fieldErrors?.text && (
-          <p className="mt-1 text-sm text-danger">{state.fieldErrors.text[0]}</p>
+        {state.fieldErrors?.decisionOrClaim && (
+          <p className="mt-1 text-sm text-danger">{state.fieldErrors.decisionOrClaim[0]}</p>
+        )}
+      </div>
+
+      <div>
+        <label htmlFor="criterion" className="block text-sm font-medium text-ink">
+          How will you know it went well?
+        </label>
+        <p className="mt-1 text-sm text-ink-secondary">
+          Something you can answer yes or no to later.
+        </p>
+        <textarea
+          id="criterion"
+          name="criterion"
+          required
+          rows={3}
+          value={criterion}
+          onChange={(e) => handleCriterionChange(e.target.value)}
+          placeholder="Mirrors what you wrote above until you change it."
+          className={inputClasses("mt-2")}
+        />
+        {state.fieldErrors?.criterion && (
+          <p className="mt-1 text-sm text-danger">{state.fieldErrors.criterion[0]}</p>
         )}
         <details className="mt-2 text-sm text-ink-secondary">
           <summary className="cursor-pointer">What makes a good prediction?</summary>
@@ -129,6 +187,10 @@ export function PredictionForm({
           <p className="mt-1 text-sm text-danger">{state.fieldErrors.resolutionDate[0]}</p>
         )}
       </div>
+
+      {/* Above this line: savable alone (docs/06-decision-layer.md §2.1). Below:
+          optional, never gating. */}
+      <hr className="border-t border-border" />
 
       <div>
         <span className="block text-sm font-medium text-ink">This prediction is about</span>

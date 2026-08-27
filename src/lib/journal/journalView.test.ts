@@ -21,6 +21,7 @@ function row(overrides: Partial<JournalRow> & Pick<JournalRow, "id" | "createdAt
   return {
     userId: UID,
     text: "Some claim",
+    decision: null,
     reasoning: null,
     confidence: 0.8,
     resolutionDate: "2026-08-15",
@@ -306,11 +307,30 @@ describe("restore round-trip: position preserved, annotation refreshed", () => {
 });
 
 describe("toJournalEntry", () => {
-  it("carries id, createdAt, text, preview, and annotation", () => {
+  it("carries id, createdAt, headline, preview, and annotation", () => {
     const entry = toJournalEntry(
       row({ id: "z", createdAt: "2026-07-28T12:00:00Z", reasoning: "  a  b  ", text: "Claim" }),
     );
-    expect(entry).toMatchObject({ id: "z", text: "Claim", preview: "a b" });
+    expect(entry).toMatchObject({ id: "z", headline: "Claim", preview: "a b" });
     expect(entry.annotation.kind).toBe("open");
+  });
+
+  it("headlines a forecast (decision null) with its claim text", () => {
+    const entry = toJournalEntry(
+      row({ id: "f", createdAt: "2026-07-28T12:00:00Z", decision: null, text: "The kitchen reno finishes by Aug 15" }),
+    );
+    expect(entry.headline).toBe("The kitchen reno finishes by Aug 15");
+  });
+
+  it("headlines a decision entry with the decision, not its success criterion", () => {
+    const entry = toJournalEntry(
+      row({
+        id: "d",
+        createdAt: "2026-07-28T12:00:00Z",
+        decision: "I turn down the contract",
+        text: "They come back with a better offer by Friday",
+      }),
+    );
+    expect(entry.headline).toBe("I turn down the contract");
   });
 });

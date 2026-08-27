@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { db, schema } from "@/db";
 import { enrichPrediction } from "@/lib/ai/enrich";
+import { deriveDecisionAndText } from "@/lib/predictions/decisionSplit";
 import { kindFor } from "@/lib/predictions/kind";
 import { confidencePercentToDbString, validateCreatePredictionInput } from "@/lib/predictions/validation";
 import { createClient } from "@/lib/supabase/server";
@@ -26,7 +27,8 @@ export async function createPrediction(
   }
 
   const validated = validateCreatePredictionInput({
-    text: formData.get("text"),
+    decisionOrClaim: formData.get("decisionOrClaim"),
+    criterion: formData.get("criterion"),
     reasoning: formData.get("reasoning"),
     planOrDisconfirm: formData.get("planOrDisconfirm"),
     predictionKind: formData.get("predictionKind"),
@@ -39,6 +41,11 @@ export async function createPrediction(
   }
   const input = validated.data!;
 
+  // The above-the-fold split (docs/06-decision-layer.md §2.1): identical fields ⇒ a
+  // pure forecast (decision null); differing fields ⇒ a decision entry. The scoreable
+  // claim is always `text`. This is the ONLY place that assignment happens.
+  const { decision, text } = deriveDecisionAndText(input.decisionOrClaim, input.criterion);
+
   // Write the row immediately — status=open, criteria frozen at creation.
   // category/reasoningType/embedding start null and are enriched below,
   // entirely outside this request/response cycle. A DB failure here returns a
@@ -50,14 +57,14 @@ export async function createPrediction(
       .insert(schema.predictions)
       .values({
         userId: user.id,
-        text: input.text,
+        text,
+        decision,
         reasoning: input.reasoning || null,
         planOrDisconfirm: input.planOrDisconfirm || null,
         // prediction_kind is DERIVED through kindFor, never set inline — the one
-        // rule for kind (CLAUDE.md). Capture has no decision field yet, so this
-        // is a pass-through of the chosen self/world today; when a decision entry
-        // exists, kindFor forces 'self' here with no other site to update.
-        predictionKind: kindFor({ decision: null, predictionKind: input.predictionKind }),
+        // rule for kind (CLAUDE.md). A non-null decision forces 'self' regardless
+        // of the chosen self/world toggle.
+        predictionKind: kindFor({ decision, predictionKind: input.predictionKind }),
         confidence: confidencePercentToDbString(input.confidencePercent),
         resolutionDate: input.resolutionDate,
         status: "open",
@@ -81,7 +88,7 @@ export async function createPrediction(
       await enrichPrediction({
         userId: user.id,
         predictionId,
-        text: input.text,
+        text,
         reasoning: input.reasoning || null,
       });
     } catch (error) {

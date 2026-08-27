@@ -28,6 +28,9 @@ export interface JournalRow {
   id: string;
   userId: string;
   text: string;
+  /** Non-null on a decision entry (docs/06-decision-layer.md §2.1) — the choice, not
+   * its success criterion. Null on a pure forecast. */
+  decision: string | null;
   reasoning: string | null;
   /** Stated confidence in [0, 1]. */
   confidence: number;
@@ -59,7 +62,10 @@ export interface JournalEntry {
   id: string;
   /** ISO instant — the client formats the day + month in local time. */
   createdAt: string;
-  text: string;
+  /** The rendered headline: the decision for a decision entry, else the forecast
+   * claim (docs/06-decision-layer.md §2.3 "Timeline: decision entries render
+   * `decision` as the headline... forecasts render `text` unchanged"). */
+  headline: string;
   /** Two-line muted preview of the frozen reasoning; null when none was written. */
   preview: string | null;
   annotation: Annotation;
@@ -143,7 +149,7 @@ export function toJournalEntry(row: JournalRow): JournalEntry {
   return {
     id: row.id,
     createdAt: row.createdAt,
-    text: row.text,
+    headline: row.decision ?? row.text,
     preview: reasoningPreview(row.reasoning),
     annotation: annotationFor(row),
   };

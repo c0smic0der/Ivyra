@@ -111,7 +111,7 @@ function EntryRow({ entry, dayLabel, todayIso }: { entry: JournalEntry; dayLabel
           <span className="text-[13px] tabular-nums text-ink-tertiary">{dayLabel}</span>
           <AnnotationView annotation={annotation} />
         </div>
-        <p className="mt-1 text-sm leading-snug text-ink">{entry.text}</p>
+        <p className="mt-1 text-sm leading-snug text-ink">{entry.headline}</p>
         {entry.preview && (
           <p className="mt-1 line-clamp-2 text-sm leading-snug text-ink-tertiary">{entry.preview}</p>
         )}

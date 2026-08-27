@@ -8,7 +8,11 @@ export const predictionKindValues = ["self", "world"] as const;
 
 export const createPredictionSchema = z
   .object({
-    text: z.string().trim().min(1, "Prediction text is required").max(2000),
+    // The two above-the-fold fields (docs/06-decision-layer.md §2.1). Whether this
+    // ends up a pure forecast or a decision entry is decided server-side by comparing
+    // them (see deriveDecisionAndText) — never here.
+    decisionOrClaim: z.string().trim().min(1, "This field is required").max(2000),
+    criterion: z.string().trim().min(1, "This field is required").max(2000),
     reasoning: z.string().trim().max(1000).optional().or(z.literal("")),
     planOrDisconfirm: z.string().trim().max(1000).optional().or(z.literal("")),
     predictionKind: z.enum(predictionKindValues),

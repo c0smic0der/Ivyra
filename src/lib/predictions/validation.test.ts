@@ -21,7 +21,8 @@ function today(): string {
 }
 
 const validBase = {
-  text: "The kitchen reno finishes by Aug 15",
+  decisionOrClaim: "The kitchen reno finishes by Aug 15",
+  criterion: "The kitchen reno finishes by Aug 15",
   predictionKind: "self" as const,
   confidencePercent: 70,
   resolutionDate: tomorrow(),
@@ -105,19 +106,34 @@ describe("validateCreatePredictionInput — prediction_kind", () => {
   });
 });
 
-describe("validateCreatePredictionInput — text and optional reasoning fields", () => {
-  it("rejects empty text", () => {
-    const r = validateCreatePredictionInput({ ...validBase, text: "" });
+describe("validateCreatePredictionInput — decisionOrClaim, criterion, and optional reasoning fields", () => {
+  it("rejects empty decisionOrClaim", () => {
+    const r = validateCreatePredictionInput({ ...validBase, decisionOrClaim: "" });
     expect(r.success).toBe(false);
   });
 
-  it("rejects whitespace-only text", () => {
-    const r = validateCreatePredictionInput({ ...validBase, text: "   " });
+  it("rejects whitespace-only decisionOrClaim", () => {
+    const r = validateCreatePredictionInput({ ...validBase, decisionOrClaim: "   " });
     expect(r.success).toBe(false);
   });
 
-  it("rejects text over the max length", () => {
-    const r = validateCreatePredictionInput({ ...validBase, text: "a".repeat(2001) });
+  it("rejects decisionOrClaim over the max length", () => {
+    const r = validateCreatePredictionInput({ ...validBase, decisionOrClaim: "a".repeat(2001) });
+    expect(r.success).toBe(false);
+  });
+
+  it("rejects empty criterion", () => {
+    const r = validateCreatePredictionInput({ ...validBase, criterion: "" });
+    expect(r.success).toBe(false);
+  });
+
+  it("rejects whitespace-only criterion", () => {
+    const r = validateCreatePredictionInput({ ...validBase, criterion: "   " });
+    expect(r.success).toBe(false);
+  });
+
+  it("rejects criterion over the max length", () => {
+    const r = validateCreatePredictionInput({ ...validBase, criterion: "a".repeat(2001) });
     expect(r.success).toBe(false);
   });
 
@@ -150,7 +166,8 @@ describe("validateCreatePredictionInput — full valid payload", () => {
     const r = validateCreatePredictionInput(validBase);
     expect(r.success).toBe(true);
     expect(r.data).toMatchObject({
-      text: validBase.text,
+      decisionOrClaim: validBase.decisionOrClaim,
+      criterion: validBase.criterion,
       predictionKind: "self",
       confidencePercent: 70,
       resolutionDate: validBase.resolutionDate,

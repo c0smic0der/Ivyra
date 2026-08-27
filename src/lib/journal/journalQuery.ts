@@ -23,6 +23,7 @@ function mapRow(r: {
   id: string;
   userId: string;
   text: string;
+  decision: string | null;
   reasoning: string | null;
   confidence: string;
   resolutionDate: string;
@@ -34,6 +35,7 @@ function mapRow(r: {
     id: r.id,
     userId: r.userId,
     text: r.text,
+    decision: r.decision,
     reasoning: r.reasoning,
     confidence: Number(r.confidence),
     resolutionDate: r.resolutionDate,
@@ -47,6 +49,7 @@ const columns = {
   id: p.id,
   userId: p.userId,
   text: p.text,
+  decision: p.decision,
   reasoning: p.reasoning,
   confidence: p.confidence,
   resolutionDate: p.resolutionDate,
