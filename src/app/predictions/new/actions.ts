@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { db, schema } from "@/db";
 import { enrichPrediction } from "@/lib/ai/enrich";
+import { kindFor } from "@/lib/predictions/kind";
 import { confidencePercentToDbString, validateCreatePredictionInput } from "@/lib/predictions/validation";
 import { createClient } from "@/lib/supabase/server";
 
@@ -52,7 +53,11 @@ export async function createPrediction(
         text: input.text,
         reasoning: input.reasoning || null,
         planOrDisconfirm: input.planOrDisconfirm || null,
-        predictionKind: input.predictionKind,
+        // prediction_kind is DERIVED through kindFor, never set inline — the one
+        // rule for kind (CLAUDE.md). Capture has no decision field yet, so this
+        // is a pass-through of the chosen self/world today; when a decision entry
+        // exists, kindFor forces 'self' here with no other site to update.
+        predictionKind: kindFor({ decision: null, predictionKind: input.predictionKind }),
         confidence: confidencePercentToDbString(input.confidencePercent),
         resolutionDate: input.resolutionDate,
         status: "open",

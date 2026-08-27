@@ -27,6 +27,8 @@ config({ path: ".env.local" });
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+import { kindFor } from "../src/lib/predictions/kind";
+
 const DEMO_EMAIL = "demo@ivyra.app";
 // Retired demo identities to remove entirely (auth user + data) so a re-run never
 // leaves duplicate demo users. demo@caliber.app was an earlier password-based seed.
@@ -250,7 +252,9 @@ function buildResolvedRows(userId: string): PredictionRow[] {
       text: TEXTS[category][i % TEXTS[category].length]!,
       reasoning: REASONING[reasoningType],
       planOrDisconfirm: null,
-      predictionKind: predictionKindFor(category),
+      // Derived through kindFor (never inline) — these seed rows carry no
+      // decision, so it's a pass-through of the category default today.
+      predictionKind: kindFor({ decision: null, predictionKind: predictionKindFor(category) }),
       confidence: t.confidence.toFixed(2),
       resolutionDate: resolvedAt.toISOString().slice(0, 10),
       category,
@@ -274,7 +278,7 @@ function buildResolvedRows(userId: string): PredictionRow[] {
       text: c.text,
       reasoning: c.reasoning,
       planOrDisconfirm: null,
-      predictionKind: predictionKindFor(c.category),
+      predictionKind: kindFor({ decision: null, predictionKind: predictionKindFor(c.category) }),
       confidence: c.confidence.toFixed(2),
       resolutionDate: resolvedAt.toISOString().slice(0, 10),
       category: c.category,
@@ -307,7 +311,7 @@ function buildOpenRows(userId: string): PredictionRow[] {
       text: o.text,
       reasoning: o.reasoning,
       planOrDisconfirm: null,
-      predictionKind: o.predictionKind,
+      predictionKind: kindFor({ decision: null, predictionKind: o.predictionKind }),
       confidence: o.confidence.toFixed(2),
       resolutionDate: o.resolutionDate,
       category: o.category,

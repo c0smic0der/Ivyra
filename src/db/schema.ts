@@ -1,5 +1,7 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   date,
   integer,
   jsonb,
@@ -12,6 +14,8 @@ import {
   uuid,
   vector,
 } from "drizzle-orm/pg-core";
+
+import { stanceValues } from "../lib/predictions/stance";
 
 // Enums ---------------------------------------------------------------------
 export const predictionKind = pgEnum("prediction_kind", ["self", "world"]);
@@ -47,7 +51,22 @@ export const predictions = pgTable("predictions", {
   // Set by the reminders cron once a due-today email has gone out for this
   // row, so a repeated/retried invocation doesn't re-email the same user.
   remindedAt: timestamp("reminded_at", { withTimezone: true }),
-});
+  // --- decision layer (nullable, un-backfilled; null is the correct historic
+  // value for every existing row). A *decision* entry records a commitment to
+  // the user's own action (vs a plain forecast); `stance` is the post-outcome
+  // read; `reflection` is free text. A non-null `decision` forces
+  // prediction_kind 'self' at write time — see kindFor.
+  decision: text("decision"),
+  stance: text("stance", { enum: stanceValues }),
+  reflection: text("reflection"),
+}, (t) => [
+  // DB-level guard mirroring the `stance` TS union, built from stanceValues so
+  // the allowed set can never drift from the type (one source, two consumers).
+  check(
+    "predictions_stance_check",
+    sql`${t.stance} in (${sql.raw(stanceValues.map((v) => `'${v}'`).join(", "))})`,
+  ),
+]);
 
 // ai_calls ------------------------------------------------------------------
 // Every LLM call is logged here (tokens, cost, latency).

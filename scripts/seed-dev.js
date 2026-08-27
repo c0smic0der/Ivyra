@@ -5,6 +5,11 @@
 // inserting a fresh batch, so it resets rather than accumulates.
 //
 // Usage: node scripts/seed-dev.js   (or: npm run db:seed-dev)
+//
+// NOTE: this legacy raw-SQL dev seed intentionally BYPASSES kindFor — it sets
+// prediction_kind inline (see below). It is dev-only QA tooling, not an app
+// write path; do NOT copy it as a reference for how kind is derived. Real write
+// paths (server actions, seed-demo.ts) must route through kindFor.
 
 require("dotenv").config({ path: ".env.local" });
 const crypto = require("crypto");

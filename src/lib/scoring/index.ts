@@ -352,6 +352,97 @@ export function calibrationByGroup<T extends Scorable>(
   return rows.sort((a, b) => b.n - a.n);
 }
 
+// --- decision layer --------------------------------------------------------
+
+/**
+ * A `Scorable` carrying the decision-layer fields. A non-null `decision` marks a
+ * *decision* entry (the user committed to their own action) as opposed to a plain
+ * *forecast*; `stance` is the user's post-outcome read on a decision (`stand_by` |
+ * `mixed` | `wouldnt_again`). Both optional, so a bare `Scorable` still satisfies
+ * the type wherever a caller has no decision data. Scoring compares `stance`
+ * against the single literal it needs (`"stand_by"`) rather than importing the
+ * value list, keeping this module free of any non-scoring dependency.
+ */
+export interface DecisionScorable extends Scorable {
+  decision?: string | null;
+  stance?: string | null;
+}
+
+/** Per-entry-type calibration summary; `null` below the sample gate. */
+export interface EntryTypeStats {
+  /** Resolved, non-void count backing every figure. */
+  n: number;
+  meanConfidence: number;
+  /** Observed YES frequency. */
+  hitRate: number;
+  /** Mean Brier over the group. */
+  brier: number;
+}
+
+/**
+ * Calibration split by entry type — decision entries vs forecasts — over the
+ * resolved, non-void population (`resolvedNonVoid`, the one void/open gate). Each
+ * side is independent: a group is summarized only at `BIAS_UNLOCK_N`+ resolutions,
+ * else `null` (the `>=` gate guarantees a non-empty group, so no figure is ever
+ * NaN or a misleading zero). Entry type is `decision != null`, deliberately NOT
+ * `prediction_kind` — a different axis (see `kindFor`). Brier and the mean/hit-rate
+ * reuse the module's `brierScore`/`mean`, never a re-derived tally.
+ */
+export function byEntryType(preds: DecisionScorable[]): {
+  decision: EntryTypeStats | null;
+  forecast: EntryTypeStats | null;
+} {
+  const resolved = resolvedNonVoid(preds);
+  const summarize = (rows: Array<DecisionScorable & { outcome: boolean }>): EntryTypeStats | null => {
+    if (rows.length < BIAS_UNLOCK_N) return null;
+    return {
+      n: rows.length,
+      meanConfidence: mean(rows.map((p) => p.confidence)),
+      hitRate: mean(rows.map((p) => (p.outcome ? 1 : 0))),
+      brier: mean(rows.map((p) => brierScore(p.confidence, p.outcome))),
+    };
+  };
+  return {
+    decision: summarize(resolved.filter((p) => p.decision != null)),
+    forecast: summarize(resolved.filter((p) => p.decision == null)),
+  };
+}
+
+/** Per-outcome stand-by summary; `null` below the sample gate. */
+export interface StanceStats {
+  /** Count of stanced decision entries in this outcome group. */
+  n: number;
+  /** Fraction whose stance is `stand_by`. */
+  standByRate: number;
+}
+
+/**
+ * Among *decision* entries that carry both a real verdict (`resolvedNonVoid`) and
+ * a recorded `stance`, the stand-by rate split by whether the criterion was met
+ * (outcome true) or missed (outcome false). Voids, still-open rows, forecasts
+ * (no decision), and stance-less rows are all excluded. Each outcome group is
+ * gated independently at `BIAS_UNLOCK_N` — a group below it is `null`, never a
+ * zero. Reports a frequency and nothing else (CLAUDE.md copy rule): it never
+ * evaluates whether standing by was the right call.
+ */
+export function outcomeByStance(preds: DecisionScorable[]): {
+  met: StanceStats | null;
+  missed: StanceStats | null;
+} {
+  const eligible = resolvedNonVoid(preds).filter((p) => p.decision != null && p.stance != null);
+  const summarize = (rows: Array<DecisionScorable & { outcome: boolean }>): StanceStats | null => {
+    if (rows.length < BIAS_UNLOCK_N) return null;
+    return {
+      n: rows.length,
+      standByRate: mean(rows.map((p) => (p.stance === "stand_by" ? 1 : 0))),
+    };
+  };
+  return {
+    met: summarize(eligible.filter((p) => p.outcome === true)),
+    missed: summarize(eligible.filter((p) => p.outcome === false)),
+  };
+}
+
 /**
  * Calibration curve as decile buckets. Confidence is bucketed half-open
  * `[lo, hi)`, with the top decile `[0.9, 1.0]` closed so 1.0 lands. Only
