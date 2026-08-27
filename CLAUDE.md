@@ -12,6 +12,16 @@ post-mortems, monthly pattern insights). The AI NEVER computes a score.
 > package name and a product name are separate things). Earlier placeholder names
 > are retired; their history is recorded only in the docs/04 version-naming note.
 
+## Docs
+- docs/01-domain-primer.md — calibration/forecasting domain background
+- docs/02-application-rundown.md — full application spec (definitive)
+- docs/03-building-with-claude.md — Claude tooling + setup guide
+- docs/04-journal-reframe.md — the journal reframe (V2), version-naming note
+- docs/05-how-ivyra-works.md — ground-up walkthrough of the whole system
+- docs/06-decision-layer.md — decision layer spec (decision/forecast split,
+  reflection + stance, outcome × stance analytics)
+- docs/07-decision-layer-runbook.md — decision layer build runbook
+
 ## Stack
 Next.js (App Router, TypeScript) · Tailwind · Supabase (Postgres + Auth + RLS +
 pgvector) · Drizzle ORM · Anthropic API (Haiku 4.5, structured output; streamed
