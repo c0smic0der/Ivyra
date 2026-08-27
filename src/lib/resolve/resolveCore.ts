@@ -8,8 +8,20 @@
 // The Brier here comes straight from the scoring module — the LLM never scores.
 
 import { brierScore, resolvedNonVoid, runningBrier, type Scorable } from "@/lib/scoring";
+import { stanceValues, type Stance } from "@/lib/predictions/stance";
 
 export type ResolveChoice = "yes" | "no" | "void";
+
+/**
+ * Runtime guard for `stance` (docs/06-decision-layer.md §2.2). A Server Action
+ * receives it as an unchecked string from the client, so this is the one place
+ * that decides whether it matches the enum before it ever reaches Drizzle's
+ * typed column — mirrors the DB check constraint, both derived from the same
+ * `stanceValues` (schema.ts) so the allowed set can't drift between the two.
+ */
+export function isValidStance(value: string): value is Stance {
+  return (stanceValues as readonly string[]).includes(value);
+}
 
 /** The columns a resolution writes onto the frozen prediction row. */
 export interface ResolutionPatch {

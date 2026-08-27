@@ -7,6 +7,7 @@
 // the user's own frozen text against the outcome. It never scores anything.
 
 import { BASELINE_BRIER, brierScore } from "@/lib/scoring";
+import type { Stance } from "@/lib/predictions/stance";
 
 /**
  * Hard character budget for each free-text field fed into the post-mortem
@@ -31,14 +32,24 @@ export function excerpt(text: string, budget = POSTMORTEM_EXCERPT_CHAR_BUDGET): 
 export const POSTMORTEM_SYSTEM_PROMPT = `You are a calibration diff engine, not a therapist or a coach. You are given a user's own frozen prediction, the reasoning they wrote BEFORE the outcome was known, and what actually happened. Your only job is to diff their stated reasoning against reality.
 
 Hard rules:
-- Every claim you make MUST anchor to text the user actually wrote — their prediction, their reasoning, their plan/what-would-change-my-mind field, or their outcome note. Quote or paraphrase their words. Do not invent facts, causes, or motives.
+- Every claim you make MUST anchor to text the user actually wrote — their prediction, their reasoning, their plan/what-would-change-my-mind field, their outcome note, or their reflection. Quote or paraphrase their words. Do not invent facts, causes, or motives, and never invent a number that isn't already given to you.
 - Never speculate about WHY they think the way they do, their psychology, or their character. No armchair analysis.
 - If the outcome note names a factor their reasoning never mentioned, say so plainly ("your reasoning didn't mention X, which your note says decided it").
 - If their "what would change my mind" field named the very thing that happened, credit it explicitly.
+- If a reflection is provided, it is the user's own self-report, knowing the outcome — quote or reference it, but never endorse it ("you were right to feel that way") or contradict it ("you should actually feel differently"). Do not judge the decision itself as good, bad, wise, or a mistake — report what they said, nothing more.
+- If a stance is provided, treat it the same way: state it as their own answer, never as a grade you are assigning or agreeing with.
 - If similar past misses are provided and reveal a recurring blind spot, name the pattern in one sentence, grounded in the shared text.
 - Do NOT restate the Brier score or any number as a judgment — the deterministic engine already scored them. You explain the reasoning gap, not the grade.
 
 Format: 2-4 short sentences, plain and direct. No preamble, no headings, no bullet points, no sign-off.`;
+
+/** Maps the stance enum to a plain self-report phrase for the prompt — the
+ * post-mortem reports this as the user's own answer, never a grade. */
+const STANCE_PROMPT_LABEL: Record<Stance, string> = {
+  stand_by: "they said they'd stand by it",
+  mixed: "they said they feel mixed about it",
+  wouldnt_again: "they said they wouldn't do it again",
+};
 
 export interface SimilarMissView {
   text: string;
@@ -55,6 +66,11 @@ export interface PostmortemInputs {
   outcome: boolean;
   outcomeNote: string | null;
   similarMisses: SimilarMissView[];
+  /** The decision layer's "knowing what you know now" free text (docs §2.2/§2.3). Null for
+   * legacy forecast rows and for decision entries where the user left it blank. */
+  reflection: string | null;
+  /** The decision layer's one-tap stance, same nullability as `reflection`. */
+  stance: Stance | null;
 }
 
 /**
@@ -89,6 +105,14 @@ export function buildPostmortemPrompt(inputs: PostmortemInputs): string {
 
   if (inputs.outcomeNote) {
     lines.push(`Their note on what happened: ${excerpt(inputs.outcomeNote)}`);
+  }
+
+  if (inputs.reflection) {
+    lines.push(`Their reflection, knowing the outcome now: ${excerpt(inputs.reflection)}`);
+  }
+
+  if (inputs.stance) {
+    lines.push(`Their stance, knowing the outcome now: ${STANCE_PROMPT_LABEL[inputs.stance]}`);
   }
 
   if (inputs.similarMisses.length > 0) {

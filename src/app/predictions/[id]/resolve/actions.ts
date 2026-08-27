@@ -8,6 +8,7 @@ import { brierSentence, type Scorable } from "@/lib/scoring";
 import {
   computeResolution,
   computeUserStats,
+  isValidStance,
   type ResolveChoice,
 } from "@/lib/resolve/resolveCore";
 
@@ -24,7 +25,10 @@ export type ResolveResult =
       /** Whether the streaming post-mortem should be requested. */
       canPostmortem: boolean;
     }
-  | { ok: false; error: "unauthorized" | "not_found" | "already_resolved" | "unexpected" };
+  | {
+      ok: false;
+      error: "unauthorized" | "not_found" | "already_resolved" | "invalid_stance" | "unexpected";
+    };
 
 const VALID_CHOICES: ResolveChoice[] = ["yes", "no", "void"];
 
@@ -32,13 +36,28 @@ const VALID_CHOICES: ResolveChoice[] = ["yes", "no", "void"];
  * Resolves a frozen prediction. Deterministic throughout — the Brier is
  * computed by the scoring module (never the LLM). The post-mortem is a
  * separate streaming step the client kicks off only after this returns.
+ *
+ * `reflection` and `stance` are the decision layer's subjective fields
+ * (docs/06-decision-layer.md §2.2) — both optional, never gating the verdict,
+ * and only ever persisted for a decision entry (`decision` non-null); a
+ * legacy forecast row ignores whatever a client sends here, since the
+ * question is meaningless without a decision to look back on.
  */
 export async function resolvePrediction(input: {
   id: string;
   choice: ResolveChoice;
   outcomeNote: string;
+  reflection?: string;
+  stance?: string;
 }): Promise<ResolveResult> {
   if (!VALID_CHOICES.includes(input.choice)) return { ok: false, error: "not_found" };
+  // Validated before touching the DB — the DB's check constraint (mirroring
+  // the same stanceValues) is the backstop, not the primary gate. Captured to a
+  // local so the type guard's narrowing survives past this block.
+  const stanceInput = input.stance;
+  if (stanceInput !== undefined && !isValidStance(stanceInput)) {
+    return { ok: false, error: "invalid_stance" };
+  }
 
   const supabase = await createClient();
   const {
@@ -56,6 +75,7 @@ export async function resolvePrediction(input: {
         confidence: schema.predictions.confidence,
         reasoning: schema.predictions.reasoning,
         status: schema.predictions.status,
+        decision: schema.predictions.decision,
       })
       .from(schema.predictions)
       .where(and(eq(schema.predictions.id, input.id), eq(schema.predictions.userId, user.id)));
@@ -69,8 +89,19 @@ export async function resolvePrediction(input: {
     const patch = computeResolution(confidence, input.choice);
     const note = input.outcomeNote.trim();
 
+    // The subjective layer only exists for a decision entry — a legacy
+    // forecast row (decision null) ignores whatever a client sends here rather
+    // than persisting a reflection/stance the question was never meaningful for.
+    const isDecision = row.decision !== null;
+    const reflection = isDecision ? input.reflection?.trim() || null : null;
+    const stance = isDecision ? (stanceInput ?? null) : null;
+
     // Atomic claim: the `status = 'open'` predicate means a concurrent second
-    // resolution updates zero rows and loses the race, not double-scores.
+    // resolution updates zero rows and loses the race, not double-scores. The
+    // verdict, outcome note, reflection, and stance land in this ONE UPDATE
+    // statement — Postgres commits or rolls back the whole row together, so a
+    // constraint failure on any column (e.g. the stance check) leaves nothing
+    // written, never a half-updated row.
     const updated = await db
       .update(schema.predictions)
       .set({
@@ -78,6 +109,8 @@ export async function resolvePrediction(input: {
         outcome: patch.outcome,
         outcomeNote: note.length > 0 ? note : null,
         brierScore: patch.brierScore === null ? null : patch.brierScore.toString(),
+        reflection,
+        stance,
         resolvedAt: new Date(),
       })
       .where(

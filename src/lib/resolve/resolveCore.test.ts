@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { brierScore, resolvedNonVoid, runningBrier, type Scorable } from "@/lib/scoring";
-import { computeResolution, computeUserStats, postmortemDecision } from "./resolveCore";
+import { stanceValues } from "@/lib/predictions/stance";
+import { computeResolution, computeUserStats, isValidStance, postmortemDecision } from "./resolveCore";
 
 // Brier wiring: the resolution's Brier must be IDENTICAL to the scoring
 // module's per-prediction Brier — resolve never re-implements the math.
@@ -85,6 +86,20 @@ describe("computeUserStats — voids are excluded from the cached stats", () => 
       gated.reduce((sum, p) => sum + brierScore(p.confidence, p.outcome), 0) / gated.length;
     expect(stats.runningBrier).toBeCloseTo(denominatorMean, 12);
     expect(stats.runningBrier).toBe(runningBrier(mixed));
+  });
+});
+
+describe("isValidStance — the one gate between a client string and the stance column", () => {
+  it("accepts every value in the shared enum", () => {
+    for (const value of stanceValues) {
+      expect(isValidStance(value)).toBe(true);
+    }
+  });
+
+  it("rejects anything outside the enum", () => {
+    expect(isValidStance("bogus")).toBe(false);
+    expect(isValidStance("")).toBe(false);
+    expect(isValidStance("Stand By")).toBe(false); // case-sensitive, no normalization
   });
 });
 

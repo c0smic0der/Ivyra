@@ -87,6 +87,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       confidencePercent,
       outcome: row.outcome ?? false,
       outcomeNote: row.outcomeNote,
+      reflection: row.reflection,
+      stance: row.stance,
       similarMisses,
     });
 

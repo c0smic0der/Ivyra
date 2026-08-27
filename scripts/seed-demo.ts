@@ -5,7 +5,9 @@
 // decile, so the curve dips below the diagonal and the bias score reads
 // positive), 3 recent resolved rows carrying hand-written post-mortems that match
 // the real diff-engine constraints, plus 5 open predictions (2 due today for a
-// live resolve + streamed post-mortem, 3 upcoming) — ~40 predictions total.
+// live resolve + streamed post-mortem, 3 upcoming; one of the due-today rows
+// carries a `decision` so the resolve screen's subjective layer has a live
+// row to exercise) — ~40 predictions total.
 //
 // Auth: demo@ivyra.app isn't a real inbox, so it logs in LOCALLY via the
 // development-only password form (src/components/auth/DevPasswordSignIn.tsx),
@@ -159,7 +161,11 @@ const CANNED: {
 ];
 
 // 5 open predictions: 2 due today (resolution_date <= today → live resolve +
-// streamed post-mortem from the dashboard) and 3 upcoming.
+// streamed post-mortem from the dashboard) and 3 upcoming. The first carries a
+// `decision` so the seed always has one decision entry available to exercise
+// the resolve screen's subjective layer (docs/06-decision-layer.md §2.2); the
+// rest are legacy-shaped forecasts (decision null), matching real history from
+// before capture required one.
 const OPEN: {
   text: string;
   category: Category;
@@ -168,6 +174,7 @@ const OPEN: {
   confidence: number;
   reasoning: string;
   resolutionDate: string;
+  decision?: string;
 }[] = [
   {
     text: "The onboarding redesign ships before the end of the month",
@@ -177,6 +184,7 @@ const OPEN: {
     confidence: 0.85,
     reasoning: "The core screens are built and only copy review is left.",
     resolutionDate: "2026-07-22",
+    decision: "I cut the settings-page redesign from this release to protect the deadline",
   },
   {
     text: "I finish reading the systems-design book this week",
@@ -306,12 +314,14 @@ function buildOpenRows(userId: string): PredictionRow[] {
   return OPEN.map((o) => {
     const resolution = new Date(`${o.resolutionDate}T00:00:00Z`);
     const createdAt = new Date(Math.min(resolution.getTime() - 14 * DAY, latestCreatedAt));
+    const decision = o.decision ?? null;
     return {
       userId,
       text: o.text,
       reasoning: o.reasoning,
       planOrDisconfirm: null,
-      predictionKind: kindFor({ decision: null, predictionKind: o.predictionKind }),
+      predictionKind: kindFor({ decision, predictionKind: o.predictionKind }),
+      decision,
       confidence: o.confidence.toFixed(2),
       resolutionDate: o.resolutionDate,
       category: o.category,

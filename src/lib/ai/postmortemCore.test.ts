@@ -4,6 +4,7 @@ import {
   consumePostmortemStream,
   isMiss,
   POSTMORTEM_EXCERPT_CHAR_BUDGET,
+  POSTMORTEM_SYSTEM_PROMPT,
   type ModelStream,
   type PostmortemInputs,
   type PostmortemStreamDeps,
@@ -38,6 +39,8 @@ describe("buildPostmortemPrompt — anchors only to user-written text", () => {
     confidencePercent: 85,
     outcome: false,
     outcomeNote: "Permit came back two weeks late",
+    reflection: null,
+    stance: null,
     similarMisses: [],
   };
 
@@ -98,6 +101,53 @@ describe("buildPostmortemPrompt — anchors only to user-written text", () => {
     expect(prompt).toContain("similar past misses");
     expect(prompt).toContain("The deck project finishes on time");
     expect(prompt).toContain("80% confident");
+  });
+
+  it("includes the reflection and stance when the entry is a decision", () => {
+    const prompt = buildPostmortemPrompt({
+      ...base,
+      reflection: "Honestly yes — staying would have meant giving up the raise.",
+      stance: "stand_by",
+    });
+    expect(prompt).toContain("Honestly yes — staying would have meant giving up the raise.");
+    expect(prompt).toContain("they said they'd stand by it");
+  });
+
+  it("omits reflection and stance cleanly for a legacy forecast row (both null)", () => {
+    const prompt = buildPostmortemPrompt(base);
+    expect(prompt).not.toContain("reflection");
+    expect(prompt).not.toContain("stance");
+  });
+
+  it("caps an oversized reflection at the same excerpt budget as reasoning/outcome_note", () => {
+    const bigReflection = "F".repeat(POSTMORTEM_EXCERPT_CHAR_BUDGET + 500);
+    const prompt = buildPostmortemPrompt({ ...base, reflection: bigReflection, stance: "mixed" });
+
+    expect(prompt).not.toContain(bigReflection);
+    expect(prompt).toContain("F".repeat(POSTMORTEM_EXCERPT_CHAR_BUDGET) + "…");
+    const reflectionLine = prompt.split("\n").find((l) => l.startsWith("Their reflection"))!;
+    expect(reflectionLine.length).toBeLessThanOrEqual(
+      "Their reflection, knowing the outcome now: ".length + POSTMORTEM_EXCERPT_CHAR_BUDGET + 1,
+    );
+  });
+});
+
+describe("POSTMORTEM_SYSTEM_PROMPT — the decision-layer constraints extend, never relax, the diff-engine rules", () => {
+  it("still bans motive speculation and restating the score as judgment", () => {
+    expect(POSTMORTEM_SYSTEM_PROMPT).toContain("Never speculate about WHY they think");
+    expect(POSTMORTEM_SYSTEM_PROMPT).toContain("Do NOT restate the Brier score");
+  });
+
+  it("bans inventing numbers, endorsing/contradicting the reflection, and judging the decision", () => {
+    expect(POSTMORTEM_SYSTEM_PROMPT).toContain("never invent a number");
+    expect(POSTMORTEM_SYSTEM_PROMPT).toContain("self-report");
+    expect(POSTMORTEM_SYSTEM_PROMPT).toContain("never endorse it");
+    expect(POSTMORTEM_SYSTEM_PROMPT).toContain("contradict it");
+    expect(POSTMORTEM_SYSTEM_PROMPT).toContain("Do not judge the decision itself");
+  });
+
+  it("treats a provided stance as the user's own answer, never a grade the model assigns", () => {
+    expect(POSTMORTEM_SYSTEM_PROMPT).toContain("never as a grade you are assigning or agreeing with");
   });
 });
 

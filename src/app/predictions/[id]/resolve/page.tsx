@@ -63,7 +63,7 @@ export default async function ResolvePage({ params }: { params: Promise<{ id: st
             )}
           </Card>
 
-          <ResolveClient id={row.id} />
+          <ResolveClient id={row.id} hasDecision={row.decision !== null} />
         </div>
       </main>
     </>
