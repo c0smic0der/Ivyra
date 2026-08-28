@@ -255,8 +255,8 @@ One commit: `Reframe capture and resolve as journal entries; report calibration,
 
 | Item | Status | Reason |
 |---|---|---|
-| **Decision/forecast split** (superseded doc) | **Cut** | Existed only to make a "decision journal" tagline functionally true; the product's purpose is prediction and the tagline no longer makes that claim. Re-add on user evidence: one nullable column, one derived-kind function, ~half a day. |
-| **Per-type insights breakdown** | Cut with it | Cannot exist without the decision column. |
+| **Decision/forecast split** (superseded doc) | **Un-shelved** — narrower than originally written | `06-decision-layer.md` §5 un-shelves this: decisions only, no split at capture, since capture no longer offers the user a choice between the two kinds — every new entry is a decision. |
+| **Per-type insights breakdown** | Un-shelved, built, unrendered | `06-decision-layer.md` §2.3/§5: `byEntryType` ships in the scoring module with tests, but decisions-vs-forecasts is no longer a category the app creates going forward, so it stays out of the insights UI. |
 | **Three template chips** (first superseded doc) | Superseded | "Commitments" and "takes" are both plain forecasts distinguished by nothing the schema needs to know. |
 | **Free-form journaling** ("What's on your mind?") | Shelved | Incompatible registers — journaling invites messiness, prediction demands precision. The enlarged reasoning field is the writing surface, anchored to a claim. |
 | **AI claim detection** | Shelved | Identifying your own forward-looking sentence is something a user can do; under design principle 1 the detector was a violation. |
@@ -266,6 +266,7 @@ One commit: `Reframe capture and resolve as journal entries; report calibration,
 | **Social / shared predictions** | Shelved | Real retention mechanism, but drags in invite flows and privacy work. The weekly ritual buys most of the benefit for a fraction of the scope. |
 | **RLS backstop** | Radar (post-ship) | App queries currently run on the privileged connection, so tenant isolation rests entirely on the app-layer `eq(user_id)` filter (RLS policies exist but are inert for this connection). Move user-facing reads/writes to an RLS-respecting connection, service role for cron/admin only. Defense in depth. |
 | **PWA installability** | Shelved 2026-08-07 | Custom install UI removed, manifest de-listed; icons retained in public/. Re-enable = restore manifest icons array + display standalone. Reason: install banner behavior is browser-controlled and nondeterministic on the dashboard surface; not worth polishing now. |
+| **LLM- or self-scored decision quality** | **Rejected permanently** | Violates the deterministic-scoring thesis and commits the resulting fallacy (`06-decision-layer.md` §1/§5): the subjective layer records, the objective layer scores, and they never mix. |
 
 ---
 

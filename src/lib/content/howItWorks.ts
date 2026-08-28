@@ -190,8 +190,8 @@ export const HOW_IT_WORKS = {
   } satisfies Section,
 
   cta: {
-    title: "Make your first decision",
-    body: "The whole loop starts with one call about something you actually care about. It takes about thirty seconds.",
+    title: "Log your first decision",
+    body: "The whole loop starts with one call about something you actually care about. It takes about a minute.",
     templatesIntro: "Or start from an example — you can edit it",
   },
 };

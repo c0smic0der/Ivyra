@@ -450,7 +450,7 @@ export default async function Home({
               Start your track record today
             </h2>
             <p className="mt-4 text-lg leading-relaxed text-ink-secondary">
-              It takes about thirty seconds to log your first entry. In a few weeks, you&apos;ll know
+              It takes about a minute to log your first entry. In a few weeks, you&apos;ll know
               something about yourself most people never do: how often your confidence matches what
               actually happens.
             </p>
