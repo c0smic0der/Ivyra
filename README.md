@@ -1,10 +1,10 @@
 # Ivyra
 
-**A journal that scores your expectations against real outcomes.** Log a real-life prediction with a confidence percentage and a resolution date; when the date arrives, resolve it, and deterministic math scores how closely your stated confidence tracks how often things actually happen. AI works only on _your own_ accumulating data — surfacing your track record at capture, diffing your frozen reasoning against outcomes, and narrating the patterns.
+**A decision journal that scores your expectations against real outcomes.** Log a decision with a success criterion, a confidence percentage, and a resolution date; when the date arrives, resolve it, and deterministic math scores how closely your stated confidence tracks how often things actually happen. AI works only on _your own_ accumulating data — surfacing your track record at capture, diffing your frozen reasoning against outcomes, and narrating the patterns.
 
 **Live:** [ivyra.app](https://ivyra.app) · installable PWA.
 
-![Ivyra — a resolved-prediction timeline showing stated confidence against how often those calls came true](docs/assets/timeline.png)
+![Ivyra — a resolved-decision timeline showing stated confidence against how often those calls came true](docs/assets/timeline.png)
 
 ---
 

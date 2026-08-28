@@ -22,7 +22,7 @@ const SAMPLE_POINTS: CalibrationPoint[] = [
 // in the user's own words — while the mechanics stay unmistakable: each entry
 // carries a claim, a confidence, and the reasoning behind it, with the score as
 // the annotation on the right. No promise of free-form writing: every entry is a
-// prediction.
+// decision.
 type MockEntry = {
   day: string;
   claim: string;
@@ -204,11 +204,12 @@ export default async function Home({
           <div className="mx-auto grid w-full max-w-5xl grid-cols-1 items-center gap-12 px-6 pb-16 pt-10 lg:grid-cols-2 lg:pb-24 lg:pt-14">
             <div className="animate-fade-up">
               <h1 className="text-4xl font-semibold leading-[1.1] tracking-tight text-ink sm:text-5xl">
-                A journal for what you think will happen — and how often you&apos;re right.
+                A decision journal that scores your expectations against real outcomes.
               </h1>
               <p className="mt-5 max-w-xl text-lg leading-relaxed text-ink-secondary">
-                Every entry is scored against what actually happened. Over time, you learn exactly
-                when to trust your own confidence — and where it runs ahead of you.
+                Every entry pairs a decision with a checkable success criterion. When it resolves,
+                deterministic scoring shows exactly how your stated confidence tracked what actually
+                happened.
               </p>
               <div className="mt-8">
                 <SignInButton className="text-base">Get started — it&apos;s free</SignInButton>
@@ -244,9 +245,9 @@ export default async function Home({
                 Turn &ldquo;I&apos;m pretty sure&rdquo; into a number you can check
               </h2>
               <p className="mt-4 text-base leading-relaxed text-ink-secondary">
-                Ivyra counts how often your predictions actually come true at each confidence level.
-                So &ldquo;I&apos;m 85% sure&rdquo; stops being a feeling and becomes a frequency — one
-                you can hold up against reality, call after call.
+                Ivyra counts how often your calls land at each confidence level. So &ldquo;I&apos;m
+                85% sure&rdquo; stops being a feeling and becomes a frequency — one you can hold up
+                against reality, call after call.
               </p>
             </div>
             <Card as="div">
@@ -284,7 +285,7 @@ export default async function Home({
                 See it across every confidence level
               </h2>
               <p className="mt-4 text-base leading-relaxed text-ink-secondary">
-                Each dot groups the predictions you made at a similar confidence, then plots that
+                Each dot groups the calls you made at a similar confidence, then plots that
                 confidence against how often those calls actually came true.
               </p>
               <ul className="mt-5 flex flex-col gap-3 text-sm text-ink-secondary">
@@ -336,7 +337,7 @@ export default async function Home({
                 Before you commit
               </CardLabel>
               <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
-                Your own track record, at the moment you predict
+                Your own track record, at the moment you decide
               </h2>
               <p className="mt-4 text-base leading-relaxed text-ink-secondary">
                 As you write a new entry, Ivyra finds the calls you&apos;ve made like it before and
@@ -369,13 +370,15 @@ export default async function Home({
                 It reads back like a journal
               </h2>
               <p className="mt-4 text-base leading-relaxed text-ink-secondary">
-                Every prediction is a dated entry in your own words: the claim, your confidence, and
-                why you believed it — frozen the moment you save. Months later it&apos;s a timeline of
-                your thinking, honest because the score won&apos;t let it drift.
+                Every entry pairs a decision with a checkable success criterion, in your own words —
+                the choice, your confidence in how it plays out, and why you believed it — frozen the
+                moment you save. Months later it&apos;s a timeline of your thinking, honest because
+                the score won&apos;t let it drift.
               </p>
               <p className="mt-3 text-sm leading-relaxed text-ink-tertiary">
-                Not a blank page — every entry is a prediction, anchored to a claim. The reasoning is
-                optional: a sentence or a paragraph, and it&apos;s the part you&apos;ll read back.
+                Not a blank page — every entry is a decision, anchored to a criterion you can check.
+                The reasoning is optional: a sentence or a paragraph, and it&apos;s the part
+                you&apos;ll read back.
               </p>
             </div>
 
@@ -448,7 +451,8 @@ export default async function Home({
             </h2>
             <p className="mt-4 text-lg leading-relaxed text-ink-secondary">
               It takes about thirty seconds to log your first entry. In a few weeks, you&apos;ll know
-              something about yourself most people never do: how often you&apos;re actually right.
+              something about yourself most people never do: how often your confidence matches what
+              actually happens.
             </p>
             <div className="mt-8 flex justify-center">
               <SignInButton className="text-base">Get started — it&apos;s free</SignInButton>

@@ -195,7 +195,7 @@ export default async function HowItWorksPage() {
                   href={user ? "/predictions/new" : "/?signin=1"}
                   className={buttonVariants("primary", { size: "md", className: "text-base" })}
                 >
-                  {user ? "Make your first prediction →" : "Get started →"}
+                  {user ? "Make your first decision →" : "Get started →"}
                 </Link>
               </div>
 

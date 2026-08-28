@@ -30,8 +30,8 @@ export function QuickCapture() {
         required
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
-        placeholder="What do you think will happen?"
-        aria-label="Quick-capture a prediction"
+        placeholder="What are you deciding?"
+        aria-label="Quick-capture a decision"
         className={inputClasses("flex-1")}
       />
       <button type="submit" className={buttonVariants("primary")}>

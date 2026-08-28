@@ -73,6 +73,8 @@ describe("how-it-works copy — calibration only, never merit", () => {
     "how good the call",
     "behind your next decision",
     "behind every decision",
+    "grade",
+    "how good your",
   ];
 
   it("evaluates no decision — only the confidence↔frequency relationship", () => {

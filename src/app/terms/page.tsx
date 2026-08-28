@@ -26,9 +26,9 @@ export default function TermsPage() {
 
       <LegalSection heading="What Ivyra is — and isn't">
         <p>
-          Ivyra is a tool for logging real-life predictions, resolving them when the date arrives,
-          and tracking how well-calibrated your confidence is over time. It is a self-reflection and
-          journaling tool. It is{" "}
+          Ivyra is a tool for logging decisions, resolving their success criteria when the date
+          arrives, and tracking how well-calibrated your confidence is over time. It is a
+          self-reflection and journaling tool. It is{" "}
           <span className="text-ink">
             not financial, investment, medical, legal, psychological, or other professional advice
           </span>

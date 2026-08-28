@@ -5,8 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Ivyra",
     short_name: "Ivyra",
-    description:
-      "Log real-life predictions, resolve them, and score your calibration over time.",
+    description: "A decision journal that scores your expectations against real outcomes.",
     start_url: "/dashboard",
     // PWA installability is shelved (see docs/04 §6). "browser" de-lists the app
     // from install prompts; the icons array is intentionally omitted so no

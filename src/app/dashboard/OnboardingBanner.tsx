@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 
 // A quiet pointer to the /how-it-works explainer for brand-new users. Shown only
-// while the account has zero predictions — the caller passes `hasAnyPrediction`
+// while the account has zero decisions — the caller passes `hasAnyPrediction`
 // derived from the existing dashboard query, so this needs no localStorage and
 // no state of its own beyond the page-view dismiss: once the first prediction
 // exists, `hasAnyPrediction` flips true and the banner stops rendering for good.
@@ -26,7 +26,7 @@ export function OnboardingBanner({ hasAnyPrediction }: { hasAnyPrediction: boole
           href="/predictions/new"
           className="mt-1.5 inline-block text-xs text-ink-secondary hover:underline"
         >
-          Or log your first prediction
+          Or log your first decision
         </Link>
       </div>
       <button

@@ -38,14 +38,14 @@ export const HOW_IT_WORKS = {
   },
 
   metaDescription:
-    "What calibration is, in plain language: whether your confidence matches reality, how Ivyra measures it, and why the math grades you while AI only explains.",
+    "What calibration is, in plain language: whether your confidence matches reality, how Ivyra measures it, and why the math compares your confidence to outcomes while AI only explains.",
 
   problem: {
     eyebrow: "The problem",
     title: "We're bad at knowing how much we know",
     paragraphs: [
       'Think of the last time you were **sure** — "I\'m 90% certain we\'ll close this by Friday." Now think about how often that kind of "90% certain" actually pans out. For most of us, honestly, it\'s a lot less than 90% of the time.',
-      'That gap stays invisible for one reason: we don\'t keep track. After the fact, memory quietly rewrites itself — "I always knew that was a stretch" — and the lesson evaporates. The only fix is almost embarrassingly simple: **write the prediction down, with a number, before you know the answer.** That\'s the whole mechanic here.',
+      'That gap stays invisible for one reason: we don\'t keep track. After the fact, memory quietly rewrites itself — "I always knew that was a stretch" — and the lesson evaporates. The only fix is almost embarrassingly simple: **write the call down, with a number, before you know the answer.** That\'s the whole mechanic here.',
     ],
     why: {
       question: "Is this just me, or is everyone like this?",
@@ -60,12 +60,12 @@ export const HOW_IT_WORKS = {
     paragraphs: [
       'This is the one idea everything else rests on, and most people have never had it spelled out. Picture a weather forecaster who says **"70% chance of rain."** What would make that a good forecast?',
       'Not whether it rains today. A "70% chance" isn\'t a promise that it will rain — it\'s a claim that **on days like this, it rains about 7 times out of 10.** So she\'s exactly right if, across all the days she says "70%," it rains on about 70% of them. The dry days aren\'t her being wrong — they\'re her forecast **coming true.** Three days in ten, it was supposed to stay dry.',
-      'So no single prediction can be "calibrated" or not — only a whole track record can. That\'s why Ivyra needs a little history before it can tell you much, and why it gets sharper the longer you use it.',
+      'So no single call can be "calibrated" or not — only a whole track record can. That\'s why Ivyra needs a little history before it can tell you much, and why it gets sharper the longer you use it.',
     ],
     why: {
-      question: "Then how can a single prediction be scored at all?",
+      question: "Then how can a single call be scored at all?",
       answer:
-        'A single prediction still gets an exact score for how close it landed to reality — that\'s the next section. What it **can\'t** tell you is whether your "70%" really means 70%. That only shows up once you\'ve made many of them and we can check: of all your "70%" calls, how often did they come true?',
+        'A single call still gets an exact score for how close it landed to reality — that\'s the next section. What it **can\'t** tell you is whether your "70%" really means 70%. That only shows up once you\'ve made many of them and we can check: of all your "70%" calls, how often did they come true?',
     },
   } satisfies Section,
 
@@ -75,8 +75,8 @@ export const HOW_IT_WORKS = {
     steps: [
       {
         step: "1",
-        title: "Predict",
-        body: "Write what you think will happen, in your own words. Add a confidence — say, 75% — and the date you'll know.",
+        title: "Decide",
+        body: "Name the decision and how you'll know it went well, in your own words. Add a confidence — say, 75% — and the date you'll know.",
       },
       {
         step: "2",
@@ -86,7 +86,7 @@ export const HOW_IT_WORKS = {
       {
         step: "3",
         title: "Score",
-        body: "Fixed math — never a guess, never AI — turns that prediction and outcome into an exact number for how close your confidence landed to what happened.",
+        body: "Fixed math — never a guess, never AI — turns that call and outcome into an exact number for how close your confidence landed to what happened.",
       },
       {
         step: "4",
@@ -100,7 +100,7 @@ export const HOW_IT_WORKS = {
     eyebrow: "Your score",
     title: "How close your confidence lands",
     paragraphs: [
-      "When a prediction resolves, we measure one thing: **how far your confidence was from what happened.** Say 90% and it happens — you were barely off. Say 90% and it doesn't — you were badly off. Average that across all your predictions and you get your score.",
+      "When a call resolves, we measure one thing: **how far your confidence was from what happened.** Say 90% and it happens — you were barely off. Say 90% and it doesn't — you were badly off. Average that across all your calls and you get your score.",
       '**Lower is better**, like golf. A score of **0.25** is the "I\'m just guessing" line — exactly what you\'d get by shrugging "50/50" at everything. Beat it, and your confidence is carrying real information about the world.',
     ],
   } satisfies Section,
@@ -109,7 +109,7 @@ export const HOW_IT_WORKS = {
     eyebrow: "Your bias",
     title: "Which way you lean",
     paragraphs: [
-      "Your score says how good your calls are. Your **bias** says which direction they're off — the gap between how confident you felt and how often you were actually right.",
+      "Your score measures the gap between your stated confidence and what actually happened. Your **bias** says which direction that gap runs — whether reality landed above or below how confident you felt.",
       '"You run **19 points overconfident**" means that, on average, reality came in about 19 percentage points below your stated confidence. The opposite reading means you were too cautious, and things happened more often than you claimed.',
     ],
   } satisfies Section,
@@ -141,7 +141,7 @@ export const HOW_IT_WORKS = {
     paragraphs: [
       "Your insights page gives you two different things, and it's worth knowing which is which.",
       '**The verdict** is the one-line summary at the top — "you lean overconfident," "calibrated and bold." It only ever **describes what\'s true** about your track record. Fixed math produces it; it states a fact and stops there.',
-      "**The insight** goes further: it **explains why, and what to do differently.** This is the one place AI helps — it reads your own predictions and the words you wrote, names the pattern behind the numbers, and points to where you can adjust. It never touches your score.",
+      "**The insight** goes further: it **explains why, and what to do differently.** This is the one place AI helps — it reads your own decisions and the words you wrote, names the pattern behind the numbers, and points to where you can adjust. It never touches your score.",
     ],
   } satisfies Section,
 
@@ -158,7 +158,7 @@ export const HOW_IT_WORKS = {
     eyebrow: "Honest expectations",
     title: "Why some things show up later",
     intro:
-      'Because calibration is about patterns, the richer read-outs need a bit of data before they mean anything. A curve built from eight predictions is noise — the same way a coin isn\'t "biased" for landing heads three times out of four. So Ivyra waits until a number actually means something, rather than guessing early. You get an exact score on your very first resolution; the bigger pictures arrive as you go:',
+      'Because calibration is about patterns, the richer read-outs need a bit of data before they mean anything. A curve built from eight decisions is noise — the same way a coin isn\'t "biased" for landing heads three times out of four. So Ivyra waits until a number actually means something, rather than guessing early. You get an exact score on your very first resolution; the bigger pictures arrive as you go:',
     items: [
       {
         n: "~10",
@@ -173,7 +173,7 @@ export const HOW_IT_WORKS = {
       {
         n: "~30",
         title: "Your calibration curve and boldness",
-        body: "The full picture: your confidence against reality across every level. These need the most data, because a curve from a handful of predictions is just noise.",
+        body: "The full picture: your confidence against reality across every level. These need the most data, because a curve from a handful of decisions is just noise.",
       },
     ],
     footnote:
@@ -182,15 +182,15 @@ export const HOW_IT_WORKS = {
 
   trust: {
     eyebrow: "What you can trust",
-    title: "The math grades you. The AI only explains.",
+    title: "The math compares. The AI only explains.",
     paragraphs: [
       "This matters, so we'll say it plainly. **Every score, every curve, every number comes from fixed math** — the same calculation for everyone, that nothing can nudge. You can't make yourself look better by sounding confident, and neither can we.",
-      "**AI is used in exactly one way:** to read your own words and data and explain the patterns back to you — name the habit, suggest a fix. It never assigns a score, and it only ever sees your own data. The judgment about how good your calls are is pure arithmetic.",
+      "**AI is used in exactly one way:** to read your own words and data and explain the patterns back to you — name the habit, suggest a fix. It never assigns a score, and it only ever sees your own data. Comparing your stated confidence to what happened is pure arithmetic — no judgment involved, from the AI or from us.",
     ],
   } satisfies Section,
 
   cta: {
-    title: "Make your first prediction",
+    title: "Make your first decision",
     body: "The whole loop starts with one call about something you actually care about. It takes about thirty seconds.",
     templatesIntro: "Or start from an example — you can edit it",
   },

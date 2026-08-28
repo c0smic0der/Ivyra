@@ -33,8 +33,7 @@ const fraunces = Fraunces({
 
 export const metadata: Metadata = {
   title: "Ivyra",
-  description:
-    "Log real-life predictions, resolve them, and score your calibration over time.",
+  description: "A decision journal that scores your expectations against real outcomes.",
 };
 
 export default function RootLayout({
