@@ -19,15 +19,17 @@ import {
   calibrationByGroup,
   CURVE_UNLOCK_N,
   ewmaBrierTrend,
+  outcomeByStance,
   PROGRESS_UNLOCK_N,
   resolvedNonVoid,
   rollingBrier,
   runningBrier,
-  type Scorable,
+  type DecisionScorable,
+  type StanceStats,
 } from "@/lib/scoring";
 
 /** The normalized shape the page maps DB rows into before handing them here. */
-export interface InsightsInput extends Scorable {
+export interface InsightsInput extends DecisionScorable {
   /** Row id — lets a chart drill-down link straight to the prediction's detail page. */
   id: string;
   /** The user's own words — shown in the chart drill-downs. */
@@ -159,6 +161,23 @@ export interface InsightsViewModel {
     value: number | null;
     sentence: string | null;
   };
+
+  /**
+   * The decisions section (docs §2.3) — the outcome × stance cross, the ONE
+   * decision-layer analytic that ships UI (`byEntryType` stays built and
+   * tested but unrendered, by decision). `met`/`missed` are `outcomeByStance`'s
+   * own per-group gate, so a group is `null` — not a misleading zero — until it
+   * clears `BIAS_UNLOCK_N` independently; the section as a whole is unlocked
+   * only once BOTH sides are readable, since the sentence quotes both at once.
+   */
+  decisions: {
+    unlocked: boolean;
+    unlockSentence: string | null;
+    met: StanceStats | null;
+    missed: StanceStats | null;
+    /** "Of decisions where your criterion was met, you'd make X% again. Where it wasn't, Y%." — null while locked. */
+    sentence: string | null;
+  };
 }
 
 /** "N of THRESHOLD resolutions until your SUBJECT unlocks." */
@@ -278,6 +297,28 @@ function buildProgressPoints(
   });
 }
 
+/**
+ * The decisions section's one sentence (docs §2.3): reports the frequency of
+ * the user's own "stand by it" stance, split by whether their criterion was
+ * met or missed. States two frequencies and stops (CLAUDE.md copy rule) — it
+ * never says whether standing by, or not, was the right call.
+ */
+function decisionsSentence(met: StanceStats, missed: StanceStats): string {
+  const metPct = Math.round(met.standByRate * 100);
+  const missedPct = Math.round(missed.standByRate * 100);
+  return `Of decisions where your criterion was met, you'd make ${metPct}% again. Where it wasn't, ${missedPct}%.`;
+}
+
+/**
+ * The decisions section's lock-state message. Reports both sides' real counts
+ * against `BIAS_UNLOCK_N` — never a single combined total, which could read as
+ * "21 of 20" while still locked (one side can clear the gate alone; the
+ * section needs both, since its one sentence quotes both at once).
+ */
+function decisionsUnlockSentence(metCount: number, missedCount: number): string {
+  return `${metCount} of ${BIAS_UNLOCK_N} met · ${missedCount} of ${BIAS_UNLOCK_N} missed — both need ${BIAS_UNLOCK_N} decisions with a recorded stance before this unlocks.`;
+}
+
 // The scoped AI insight (docs §9.4) replaces v1's templated monthly summary: it
 // lives in its own module (scopedInsightView.ts), is generated on demand rather
 // than computed on every render, and its deterministic fallback is scope-based,
@@ -311,6 +352,17 @@ export function buildInsightsViewModel(preds: InsightsInput[]): InsightsViewMode
   const lifetime = runningBrier(resolved);
 
   const runningValue = runningBrier(resolved);
+
+  // outcomeByStance gates `met`/`missed` independently at BIAS_UNLOCK_N; the
+  // section reads as one sentence quoting both sides, so it only unlocks once
+  // BOTH groups clear the gate. The lock-state counts (never a rate) are the
+  // same eligible population (real verdict + recorded stance) `outcomeByStance`
+  // draws `met`/`missed` from, split the same way it splits them.
+  const stance = outcomeByStance(preds);
+  const decisionsUnlocked = stance.met !== null && stance.missed !== null;
+  const eligibleForDecisions = resolved.filter((p) => p.decision != null && p.stance != null);
+  const metEligibleCount = eligibleForDecisions.filter((p) => p.outcome === true).length;
+  const missedEligibleCount = eligibleForDecisions.filter((p) => p.outcome === false).length;
 
   return {
     n,
@@ -354,6 +406,16 @@ export function buildInsightsViewModel(preds: InsightsInput[]): InsightsViewMode
     runningBrier: {
       value: runningValue,
       sentence: runningValue === null ? null : brierSentence(runningValue),
+    },
+
+    decisions: {
+      unlocked: decisionsUnlocked,
+      unlockSentence: decisionsUnlocked
+        ? null
+        : decisionsUnlockSentence(metEligibleCount, missedEligibleCount),
+      met: stance.met,
+      missed: stance.missed,
+      sentence: decisionsUnlocked ? decisionsSentence(stance.met!, stance.missed!) : null,
     },
   };
 }

@@ -27,6 +27,8 @@ interface OverviewProps {
   progress: InsightsViewModel["progress"];
   /** Recent-window values powering the stat-strip tooltips' recent-vs-lifetime deltas. */
   recent: RecentDeltas;
+  /** The outcome × stance cross (docs §2.3) — the one decision-layer analytic that ships UI. */
+  decisions: InsightsViewModel["decisions"];
   /** The coach's-note (AI insight) block, rendered by the server page. */
   insightSlot: ReactNode;
 }
@@ -365,6 +367,31 @@ function CategoryBreakdown({ bias }: { bias: OverviewProps["bias"] }) {
   );
 }
 
+/** "Decisions" — the outcome × stance cross (docs §2.3), the only rendered
+ *  decision-layer analytic (`byEntryType` ships built and tested, unrendered).
+ *  Reports frequencies of the user's own stance answers and stops — it never
+ *  says whether standing by, or not, was the right call (CLAUDE.md copy rule).
+ *  No per-type (decision-vs-forecast) breakdown is rendered here or anywhere. */
+function DecisionsSection({ decisions }: { decisions: OverviewProps["decisions"] }) {
+  return (
+    <section className="mt-14">
+      <h3 className="text-sm font-semibold text-ink">Decisions</h3>
+      {!decisions.unlocked ? (
+        <p className="mt-3 rounded-xl border border-dashed border-border p-6 text-center text-sm text-ink-secondary">
+          {decisions.unlockSentence}
+        </p>
+      ) : (
+        <>
+          <p className="mt-3 text-sm text-ink-secondary">{decisions.sentence}</p>
+          <p className="mt-1 text-xs text-ink-tertiary">
+            Outcome and satisfaction are recorded separately — this shows how they relate for you.
+          </p>
+        </>
+      )}
+    </section>
+  );
+}
+
 export function InsightsOverview({
   verdict,
   trend,
@@ -376,6 +403,7 @@ export function InsightsOverview({
   curve,
   progress,
   recent,
+  decisions,
   insightSlot,
 }: OverviewProps) {
   return (
@@ -387,6 +415,7 @@ export function InsightsOverview({
           border (the page title carries a fainter accent rule). */}
       <div className="mx-auto mt-14 max-w-[42rem]">{insightSlot}</div>
       <CategoryBreakdown bias={bias} />
+      <DecisionsSection decisions={decisions} />
     </div>
   );
 }

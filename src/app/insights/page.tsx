@@ -61,6 +61,8 @@ export default async function InsightsPage({
     resolvedAt: row.resolvedAt!,
     category: row.category,
     reasoningType: row.reasoningType,
+    decision: row.decision,
+    stance: row.stance,
   }));
 
   const vm = buildInsightsViewModel(inputs);
@@ -195,6 +197,7 @@ export default async function InsightsPage({
               boldness={vm.boldness}
               curve={vm.curve}
               progress={vm.progress}
+              decisions={vm.decisions}
               recent={{
                 brier: recentStats.brier,
                 bias: recentStats.bias,

@@ -4,10 +4,12 @@
 // OVERCONFIDENT profile (actual frequency sags below stated confidence in every
 // decile, so the curve dips below the diagonal and the bias score reads
 // positive), 3 recent resolved rows carrying hand-written post-mortems that match
-// the real diff-engine constraints, plus 5 open predictions (2 due today for a
+// the real diff-engine constraints, 24 resolved decision entries — 6 per
+// outcome×stance quadrant — so the insights "Decisions" section (docs §2.3)
+// demos with real crossed numbers, plus 5 open predictions (2 due today for a
 // live resolve + streamed post-mortem, 3 upcoming; one of the due-today rows
 // carries a `decision` so the resolve screen's subjective layer has a live
-// row to exercise) — ~40 predictions total.
+// row to exercise) — ~64 predictions total.
 //
 // Auth: demo@ivyra.app isn't a real inbox, so it logs in LOCALLY via the
 // development-only password form (src/components/auth/DevPasswordSignIn.tsx),
@@ -160,6 +162,322 @@ const CANNED: {
   },
 ];
 
+// 24 resolved decision entries — 6 per outcome×stance quadrant (met+stand_by,
+// met+wouldnt_again, missed+stand_by, missed+wouldnt_again) — so the insights
+// "Decisions" section (docs/06-decision-layer.md §2.3) demos with real crossed
+// numbers instead of lock states. `outcomeByStance` gates each of the two
+// outcome groups independently at BIAS_UNLOCK_N (10); 12 met + 12 missed each
+// clears it with room to spare. Every entry carries a `decision`, a `stance`,
+// and a first-person `reflection` — the reflection is the USER's own words, so
+// it may read as self-judging ("I should have eased in"); the CLAUDE.md
+// "calibration only, never merit" rule constrains what the APP says about a
+// decision, never what the user writes about their own.
+const DECISION_ENTRIES: {
+  decision: string;
+  text: string;
+  category: Category;
+  reasoningType: ReasoningType;
+  confidence: number;
+  reasoning: string;
+  outcome: boolean;
+  outcomeNote: string;
+  reflection: string;
+  stance: "stand_by" | "mixed" | "wouldnt_again";
+}[] = [
+  // --- met + stand_by (criterion met; would make the same call again) -------
+  {
+    decision: "I turned down the higher-paying offer to stay at my current company",
+    text: "I still feel engaged at work six months later",
+    category: "work",
+    reasoningType: "trust_in_person",
+    confidence: 0.75,
+    reasoning: "My manager has followed through on promises before, and the new team's fit was unknown.",
+    outcome: true,
+    outcomeNote: "Got put on the project I wanted and the team gelled quickly.",
+    reflection: "Yes, I'd stay again — the other offer's team turned out to have high turnover anyway.",
+    stance: "stand_by",
+  },
+  {
+    decision: "I moved my emergency fund into a high-yield account instead of investing it",
+    text: "My emergency fund stayed fully liquid through the year",
+    category: "money",
+    reasoningType: "base_rate",
+    confidence: 0.9,
+    reasoning: "I've kept cash reserves untouched through past downturns.",
+    outcome: true,
+    outcomeNote: "Never had to touch it, and it earned decent interest.",
+    reflection: "Absolutely — having it liquid mattered more than the extra yield I gave up.",
+    stance: "stand_by",
+  },
+  {
+    decision: "I asked for feedback directly instead of guessing why the review was lukewarm",
+    text: "I got a clear, actionable answer within the week",
+    category: "work",
+    reasoningType: "specific_evidence",
+    confidence: 0.65,
+    reasoning: "My manager has been direct in one-on-ones before.",
+    outcome: true,
+    outcomeNote: "She gave me two concrete things to work on.",
+    reflection: "I'd ask directly again — guessing would have just left me anxious longer.",
+    stance: "stand_by",
+  },
+  {
+    decision: "I signed up for a structured training plan instead of running by feel",
+    text: "I kept a consistent training log for two months",
+    category: "health",
+    reasoningType: "plan_optimism",
+    confidence: 0.7,
+    reasoning: "Structured plans have worked for me before when I stuck with them.",
+    outcome: true,
+    outcomeNote: "Followed the plan almost every week.",
+    reflection: "Keeping the structured plan — winging it never lasted this long before.",
+    stance: "stand_by",
+  },
+  {
+    decision: "I called my sister instead of waiting for her to reach out first",
+    text: "We had a real conversation, not just small talk",
+    category: "relationships",
+    reasoningType: "gut_feel",
+    confidence: 0.55,
+    reasoning: "No strong evidence either way, but it felt overdue.",
+    outcome: true,
+    outcomeNote: "She said she'd been meaning to call too.",
+    reflection: "Glad I made the first move — waiting had already cost us a few months.",
+    stance: "stand_by",
+  },
+  {
+    decision: "I paid for the course upfront instead of the pay-as-you-go option",
+    text: "I finished every course module",
+    category: "self",
+    reasoningType: "plan_optimism",
+    confidence: 0.8,
+    reasoning: "Committing money upfront has kept me accountable before.",
+    outcome: true,
+    outcomeNote: "Finished with two weeks to spare.",
+    reflection: "The upfront commitment is what got me through the slow middle modules.",
+    stance: "stand_by",
+  },
+  // --- met + wouldnt_again (criterion met; wouldn't make the same call again) -
+  {
+    decision: "I crammed the whole proposal in one all-nighter instead of spreading it out",
+    text: "The client accepted the proposal without changes",
+    category: "work",
+    reasoningType: "plan_optimism",
+    confidence: 0.6,
+    reasoning: "I've pulled off last-minute work before under pressure.",
+    outcome: true,
+    outcomeNote: "It landed, but I was running on fumes for the client call.",
+    reflection: "It worked, but I was one bad night's sleep from blowing the pitch — not doing that again.",
+    stance: "wouldnt_again",
+  },
+  {
+    decision: "I put the whole bonus into one stock instead of spreading it across a few",
+    text: "The stock closed the quarter up",
+    category: "money",
+    reasoningType: "gut_feel",
+    confidence: 0.5,
+    reasoning: "No real evidence, just a hunch about the sector.",
+    outcome: true,
+    outcomeNote: "It went up, but it swung wildly the whole quarter.",
+    reflection: "I got lucky — the volatility wasn't worth what I actually knew going in.",
+    stance: "wouldnt_again",
+  },
+  {
+    decision: "I skipped rest days to push through the training block",
+    text: "I hit my target time for the race",
+    category: "health",
+    reasoningType: "plan_optimism",
+    confidence: 0.65,
+    reasoning: "Extra volume has paid off in past training blocks.",
+    outcome: true,
+    outcomeNote: "Hit the time, but I was nursing a sore knee for weeks after.",
+    reflection: "The time came through, but my knee still isn't right — I'd take the rest days next time.",
+    stance: "wouldnt_again",
+  },
+  {
+    decision: "I confronted my roommate about the mess in front of our other friends",
+    text: "The apartment stayed clean afterward",
+    category: "relationships",
+    reasoningType: "gut_feel",
+    confidence: 0.5,
+    reasoning: "Nothing specific, just frustration boiling over.",
+    outcome: true,
+    outcomeNote: "They cleaned up, but things were awkward between us for a while.",
+    reflection: "It got the result, but doing it in front of everyone wasn't necessary — I'd pull them aside instead.",
+    stance: "wouldnt_again",
+  },
+  {
+    decision: "I overcommitted to three side projects at once to force momentum",
+    text: "I shipped the first version of the app",
+    category: "self",
+    reasoningType: "plan_optimism",
+    confidence: 0.6,
+    reasoning: "Pressure has pushed me to finish things before.",
+    outcome: true,
+    outcomeNote: "Shipped it, but the other two projects stalled completely.",
+    reflection: "Shipping felt good, but the other two are dead now — spreading myself that thin isn't worth it.",
+    stance: "wouldnt_again",
+  },
+  {
+    decision: "I took the higher-interest loan to close on the house faster",
+    text: "We closed before the seller's deadline",
+    category: "money",
+    reasoningType: "specific_evidence",
+    confidence: 0.7,
+    reasoning: "The seller had another offer already lined up.",
+    outcome: true,
+    outcomeNote: "We got the house, but the rate is costing us a lot more than planned.",
+    reflection: "Got the house, but I'd negotiate more time instead of eating that rate again.",
+    stance: "wouldnt_again",
+  },
+  // --- missed + stand_by (criterion missed; would make the same call again) --
+  {
+    decision: "I turned down the guaranteed contract for the equity offer",
+    text: "The startup reached its funding milestone",
+    category: "work",
+    reasoningType: "trust_in_person",
+    confidence: 0.6,
+    reasoning: "The founders have a strong track record of hitting milestones.",
+    outcome: false,
+    outcomeNote: "The round fell through after a lead investor pulled out.",
+    reflection: "Still the right bet given what I knew — the investor pulling out wasn't something I could have seen.",
+    stance: "stand_by",
+  },
+  {
+    decision: "I put off the car repair to save for the down payment instead",
+    text: "The car made it through the year without a major breakdown",
+    category: "money",
+    reasoningType: "base_rate",
+    confidence: 0.55,
+    reasoning: "The car's held up fine on minor issues before.",
+    outcome: false,
+    outcomeNote: "The transmission failed in November.",
+    reflection: "I'd make the same call again — the odds favored waiting, this was just bad luck.",
+    stance: "stand_by",
+  },
+  {
+    decision: "I trained for the marathon on my own instead of hiring a coach",
+    text: "I finished under my target time",
+    category: "health",
+    reasoningType: "plan_optimism",
+    confidence: 0.6,
+    reasoning: "Self-directed training has gotten me close to goal times before.",
+    outcome: false,
+    outcomeNote: "Cramped badly at mile 20 and had to walk it in.",
+    reflection: "I'd still train myself again — the cramping was about race-day heat, not the plan.",
+    stance: "stand_by",
+  },
+  {
+    decision: "I gave my friend the benefit of the doubt and lent them the money",
+    text: "They paid me back by the date we agreed",
+    category: "relationships",
+    reasoningType: "trust_in_person",
+    confidence: 0.65,
+    reasoning: "They've always paid me back on time before.",
+    outcome: false,
+    outcomeNote: "They lost their job unexpectedly and couldn't pay on time.",
+    reflection: "I'd lend it again — nothing about how I sized them up was wrong, their job loss wasn't foreseeable.",
+    stance: "stand_by",
+  },
+  {
+    decision: "I picked the apartment with the shorter commute over the bigger one",
+    text: "The shorter commute made me noticeably less stressed this year",
+    category: "self",
+    reasoningType: "gut_feel",
+    confidence: 0.55,
+    reasoning: "Commute stress has worn on me before, so this felt worth it.",
+    outcome: false,
+    outcomeNote: "Construction on the route added 20 minutes most days anyway.",
+    reflection: "I'd pick the shorter commute again — the construction wasn't anything I could have predicted.",
+    stance: "stand_by",
+  },
+  {
+    decision: "I pitched the redesign to leadership instead of shipping it quietly first",
+    text: "Leadership approved the redesign in the first review",
+    category: "work",
+    reasoningType: "specific_evidence",
+    confidence: 0.6,
+    reasoning: "Early feedback from two stakeholders had been positive.",
+    outcome: false,
+    outcomeNote: "A last-minute stakeholder raised concerns that stalled approval.",
+    reflection: "Pitching it openly was still the right move — I couldn't have known that stakeholder would weigh in that late.",
+    stance: "stand_by",
+  },
+  // --- missed + wouldnt_again (criterion missed; wouldn't make the same call again) -
+  {
+    decision: "I skipped the home inspection to make the offer more competitive",
+    text: "The house needed no major repairs in the first year",
+    category: "money",
+    reasoningType: "gut_feel",
+    confidence: 0.5,
+    reasoning: "The house looked well maintained on the walkthrough.",
+    outcome: false,
+    outcomeNote: "Found a serious foundation issue within two months.",
+    reflection: "Skipping the inspection was the mistake — I'd never waive it again, competitive market or not.",
+    stance: "wouldnt_again",
+  },
+  {
+    decision: "I took on the client project without a signed contract",
+    text: "The client paid the full invoice on time",
+    category: "work",
+    reasoningType: "trust_in_person",
+    confidence: 0.6,
+    reasoning: "We'd worked together informally before without issues.",
+    outcome: false,
+    outcomeNote: "They disputed the scope and paid half.",
+    reflection: "I'd never start work again without a signed contract — this one was avoidable.",
+    stance: "wouldnt_again",
+  },
+  {
+    decision: "I switched to the new workout program cold instead of easing in",
+    text: "I avoided injury through the transition",
+    category: "health",
+    reasoningType: "plan_optimism",
+    confidence: 0.55,
+    reasoning: "I've handled program switches fine before.",
+    outcome: false,
+    outcomeNote: "Pulled a muscle in the second week.",
+    reflection: "I should have eased in — jumping straight into the new program was on me.",
+    stance: "wouldnt_again",
+  },
+  {
+    decision: "I brought up the tension at the family dinner instead of privately",
+    text: "The conversation stayed calm and resolved things",
+    category: "relationships",
+    reasoningType: "gut_feel",
+    confidence: 0.5,
+    reasoning: "No strong read either way, just wanted it out in the open.",
+    outcome: false,
+    outcomeNote: "It turned into an argument in front of everyone.",
+    reflection: "That was the wrong setting for it — I'd have that conversation privately next time.",
+    stance: "wouldnt_again",
+  },
+  {
+    decision: "I quit my daily journaling habit to free up time for a new project",
+    text: "I kept the same sense of clarity without journaling",
+    category: "self",
+    reasoningType: "gut_feel",
+    confidence: 0.5,
+    reasoning: "Figured the habit had mostly run its course.",
+    outcome: false,
+    outcomeNote: "Noticeably more scattered within a few weeks of stopping.",
+    reflection: "I'd keep the habit — dropping it cost me more clarity than the extra time was worth.",
+    stance: "wouldnt_again",
+  },
+  {
+    decision: "I co-signed my cousin's lease without a written side agreement between us",
+    text: "The rent got paid on time every month without my involvement",
+    category: "money",
+    reasoningType: "trust_in_person",
+    confidence: 0.6,
+    reasoning: "Family, and they'd always been responsible about money.",
+    outcome: false,
+    outcomeNote: "I ended up covering two months when they fell behind.",
+    reflection: "I'd get something in writing next time — good intentions aren't a payment plan.",
+    stance: "wouldnt_again",
+  },
+];
+
 // 5 open predictions: 2 due today (resolution_date <= today → live resolve +
 // streamed post-mortem from the dashboard) and 3 upcoming. The first carries a
 // `decision` so the seed always has one decision entry available to exercise
@@ -304,6 +622,44 @@ function buildResolvedRows(userId: string): PredictionRow[] {
   return rows;
 }
 
+/**
+ * The 24 decision entries behind the insights "Decisions" section (docs
+ * §2.3). Laddered right after the forecast history above, each carries a
+ * `decision`, forcing `predictionKind` 'self' via `kindFor` (never inline) —
+ * exactly what a real capture would produce, since capture is decisions-only.
+ */
+function buildDecisionEntryRows(userId: string): PredictionRow[] {
+  const START = Date.UTC(2026, 6, 20); // Jul 20 2026 — right after the forecast history
+  const END = Date.UTC(2026, 7, 20); // Aug 20 2026
+  const step = (END - START) / (DECISION_ENTRIES.length - 1);
+
+  return DECISION_ENTRIES.map((entry, i) => {
+    const resolvedAt = new Date(START + i * step);
+    const createdAt = new Date(resolvedAt.getTime() - 14 * 24 * 3600 * 1000);
+    const brier = (entry.confidence - (entry.outcome ? 1 : 0)) ** 2;
+    return {
+      userId,
+      text: entry.text,
+      reasoning: entry.reasoning,
+      planOrDisconfirm: null,
+      predictionKind: kindFor({ decision: entry.decision, predictionKind: "self" }),
+      decision: entry.decision,
+      confidence: entry.confidence.toFixed(2),
+      resolutionDate: resolvedAt.toISOString().slice(0, 10),
+      category: entry.category,
+      reasoningType: entry.reasoningType,
+      status: "resolved",
+      outcome: entry.outcome,
+      outcomeNote: entry.outcomeNote,
+      brierScore: brier.toFixed(4),
+      reflection: entry.reflection,
+      stance: entry.stance,
+      createdAt,
+      resolvedAt,
+    };
+  });
+}
+
 function buildOpenRows(userId: string): PredictionRow[] {
   const DAY = 24 * 3600 * 1000;
   // A prediction is always WRITTEN in the past. Aim for ~2 weeks before the
@@ -417,7 +773,7 @@ async function main() {
   await purgeUserData(userId);
   console.log("Cleared existing demo data.");
 
-  const rows = [...buildResolvedRows(userId), ...buildOpenRows(userId)];
+  const rows = [...buildResolvedRows(userId), ...buildDecisionEntryRows(userId), ...buildOpenRows(userId)];
   await db.insert(schema.predictions).values(rows);
 
   const resolvedCount = rows.filter((r) => r.status === "resolved").length;

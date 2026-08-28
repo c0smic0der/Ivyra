@@ -9,6 +9,7 @@ import {
   calibrationBuckets,
   CURVE_UNLOCK_N,
   ewmaBrierTrend,
+  outcomeByStance,
   PROGRESS_UNLOCK_N,
   resolvedNonVoid,
   rollingBrier,
@@ -324,6 +325,91 @@ describe("buildInsightsViewModel — recent vs lifetime progress series (the cha
     // of points, so flipping the tab visibly moves the dots.
     const differing = trend.filter((pt) => Math.abs(pt.value - pt.lifetime) > 1e-6).length;
     expect(differing).toBeGreaterThan(trend.length * 0.6);
+  });
+});
+
+describe("buildInsightsViewModel — decisions section (outcome × stance, docs §2.3)", () => {
+  const decisionRow = (
+    i: number,
+    outcome: boolean,
+    stance: string,
+    overrides: Partial<InsightsInput> = {},
+  ) => resolvedInput(i, { outcome, decision: `decision ${i}`, stance, ...overrides });
+
+  it("is locked at zero decisions, with an honest count-based lock sentence (never a rate)", () => {
+    const vm = buildInsightsViewModel([]);
+    expect(vm.decisions.unlocked).toBe(false);
+    expect(vm.decisions.unlockSentence).toBe(
+      "0 of 10 met · 0 of 10 missed — both need 10 decisions with a recorded stance before this unlocks.",
+    );
+    expect(vm.decisions.met).toBeNull();
+    expect(vm.decisions.missed).toBeNull();
+    expect(vm.decisions.sentence).toBeNull();
+  });
+
+  it("stays locked when only one side clears BIAS_UNLOCK_N — the sentence quotes both, so both must be ready", () => {
+    const preds: InsightsInput[] = [
+      ...Array.from({ length: 12 }, (_, i) => decisionRow(i, true, "stand_by")), // met: 12, clears alone
+      ...Array.from({ length: 9 }, (_, i) => decisionRow(100 + i, false, "stand_by")), // missed: 9, below the gate
+    ];
+    const vm = buildInsightsViewModel(preds);
+    expect(vm.decisions.met).not.toBeNull();
+    expect(vm.decisions.missed).toBeNull();
+    expect(vm.decisions.unlocked).toBe(false);
+    expect(vm.decisions.sentence).toBeNull();
+    // Each side's real count, never a combined total that could read as "past done" while still locked.
+    expect(vm.decisions.unlockSentence).toBe(
+      "12 of 10 met · 9 of 10 missed — both need 10 decisions with a recorded stance before this unlocks.",
+    );
+  });
+
+  it("unlocks once both sides clear BIAS_UNLOCK_N, matching outcomeByStance exactly", () => {
+    const preds: InsightsInput[] = [
+      ...Array.from({ length: 9 }, (_, i) => decisionRow(i, true, "stand_by")),
+      ...Array.from({ length: 3 }, (_, i) => decisionRow(9 + i, true, "wouldnt_again")), // met: 12, 9 stand_by → 75%
+      ...Array.from({ length: 4 }, (_, i) => decisionRow(20 + i, false, "stand_by")),
+      ...Array.from({ length: 8 }, (_, i) => decisionRow(24 + i, false, "wouldnt_again")), // missed: 12, 4 stand_by → 33%
+    ];
+    const vm = buildInsightsViewModel(preds);
+    const direct = outcomeByStance(preds);
+
+    expect(vm.decisions.unlocked).toBe(true);
+    expect(vm.decisions.unlockSentence).toBeNull();
+    expect(vm.decisions.met).toEqual(direct.met);
+    expect(vm.decisions.missed).toEqual(direct.missed);
+    expect(vm.decisions.sentence).toBe(
+      "Of decisions where your criterion was met, you'd make 75% again. Where it wasn't, 33%.",
+    );
+  });
+
+  it("the rendered sentence never evaluates the decision itself (CLAUDE.md copy rule)", () => {
+    const preds: InsightsInput[] = [
+      ...Array.from({ length: 10 }, (_, i) => decisionRow(i, true, "stand_by")),
+      ...Array.from({ length: 10 }, (_, i) => decisionRow(20 + i, false, "wouldnt_again")),
+    ];
+    const sentence = buildInsightsViewModel(preds).decisions.sentence!;
+    expect(sentence).not.toMatch(
+      /good call|bad call|right to|wrong to|should have|better decision|poor judgment/i,
+    );
+  });
+
+  it("excludes voids, open rows, stance-less rows, and forecasts — same population outcomeByStance uses", () => {
+    const preds: InsightsInput[] = [
+      ...Array.from({ length: 10 }, (_, i) => decisionRow(i, true, "stand_by")),
+      ...Array.from({ length: 10 }, (_, i) => decisionRow(20 + i, false, "stand_by")),
+      decisionRow(200, true, "stand_by", { status: "void" }),
+      resolvedInput(201, { outcome: false, decision: "x", stance: null }),
+      resolvedInput(202, { outcome: true, decision: null, stance: "stand_by" }),
+    ];
+    const vm = buildInsightsViewModel(preds);
+    expect(vm.decisions.met!.n).toBe(10);
+    expect(vm.decisions.missed!.n).toBe(10);
+  });
+
+  it("does not expose a per-type (decision-vs-forecast) breakdown — byEntryType ships unrendered", () => {
+    const vm = buildInsightsViewModel(resolvedFixture(12));
+    expect((vm as unknown as Record<string, unknown>).byEntryType).toBeUndefined();
+    expect((vm.decisions as Record<string, unknown>).byEntryType).toBeUndefined();
   });
 });
 
