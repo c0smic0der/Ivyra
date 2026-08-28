@@ -40,9 +40,9 @@ Design for the primary persona; the other two come along for free.
 Format: *As a [user], I want [capability], so that [benefit].* Priority: **[M]** must-have MVP, **[S]** should-have, **[C]** could-have-later.
 
 **Epic A — Capture a prediction**
-- **[M]** …quickly write a prediction in my own words, so logging is frictionless. (Static placeholder examples and 2–3 guideline predictions on the capture screen teach precision — no AI in the writing path.)
+- **[M]** …state the decision I'm making and the success criterion that will be scored, as two required fields ("What are you deciding?" / "How will you know it went well?"), so every entry ties a checkable outcome to the choice it belongs to. (Static placeholder examples and 2–3 guideline criteria on the capture screen teach precision — no AI in the writing path.)
 - **[M]** …set my confidence as a percentage and a resolution date, so it can be scored.
-- **[M]** …optionally note *why* I believe this (1–2 sentences) and, depending on prediction type, *what my plan is* (self-predictions) or *what would change my mind* (world-predictions), so my pre-outcome reasoning is frozen for later learning. Optional, never gating.
+- **[M]** …optionally note *why* I believe this (1–2 sentences) and *what my plan is*, so my pre-outcome reasoning is frozen for later learning. Optional, never gating.
 - **[M]** …see my own track record on similar past predictions at the moment I set confidence ("6 similar deadline predictions: avg confidence 82%, hit rate 33%"), so I can correct before repeating a known error. (Appears only once enough history exists.)
 - **[M]** …have my prediction auto-categorized (work, health, relationships, money, self), so breakdowns populate without me maintaining tags.
 - **[S]** …see a generic base rate for common prediction types from a static lookup (deadlines, habits, hiring), so new users get an outside view before they have history.
@@ -86,11 +86,11 @@ Landing → Sign up/in → Onboarding (2 screens) → Dashboard
 **4. Dashboard (home).** Top: headline stats — running Brier, baseline comparison, counts resolved/pending. Middle: **"Due for resolution"** list (drives return visits). Below: open predictions with dates, prominent **+ New prediction**.
 
 **5. Capture flow (the core interaction — fast, static, AI only in the background and sidebar).**
-- Text box: *"What do you think will happen?"* — with rotating placeholder examples of well-formed predictions ("The kitchen reno finishes by Aug 15", "I go to the gym 12+ times in March"). A collapsible "what makes a good prediction" tip with 2–3 guidelines. **No AI rewriting, no AI interrogation.** (Optional v2: a silent, non-blocking warning if the text contains no date/number at all.)
-- **Confidence slider (%)** and **resolution date**.
-- **Reasoning fields (optional, 1–2 sentences each):** *"Why do you think so?"* plus — branched deterministically on self-vs-world prediction — *"What's your plan?"* or *"What would change your mind?"* Placeholder examples teach the format.
+- Two required text boxes: *"What are you deciding?"* ("A choice you're making, or a call about how something goes.") and *"How will you know it went well?"* ("Something you can answer yes or no to later."). The first persists as the decision; the second is the success criterion — the checkable claim that actually gets scored. Both carry rotating placeholder examples ("The kitchen reno finishes by Aug 15", "I go to the gym 12+ times in March") and a collapsible "what makes a good criterion" tip with 2–3 guidelines. **No AI rewriting, no AI interrogation.** Save is blocked until both are filled — there is no longer a path to log a bare claim with no attached decision. (Optional v2: a silent, non-blocking warning if the criterion contains no date/number at all.)
+- **Confidence slider (%)** and **resolution date** — attach to the success criterion.
+- **Reasoning fields (optional, 1–2 sentences each):** *"Why do you think so?"* plus *"What's your plan?"* Placeholder examples teach the format.
 - **Track-record panel (AI, appears when history suffices):** as the user types, semantic match against their resolved history → *"You've made 6 similar predictions. Avg confidence 82%. Hit rate 33%."* For new users, a static base-rate line for common types instead.
-- Save. On save (background, non-blocking): embed prediction+reasoning, auto-categorize, classify reasoning type. Criteria and reasoning **freeze**.
+- Save. On save (background, non-blocking): embed criterion+reasoning, auto-categorize, classify reasoning type. Decision, criterion, and reasoning **freeze**.
 
 **6. Resolve flow.** From dashboard or email link. Shows the frozen prediction (and their frozen reasoning, collapsed). User taps **YES / NO / Void**, optionally adds one line on what happened. Instantly: that prediction's Brier + updated running score (deterministic, renders before any AI). Then, if reasoning exists: the **AI post-mortem streams in token-by-token** — a short diff of stated reasoning vs. actual outcome, every claim anchored to their own text, including cross-references to past similar misses. (Streaming is deliberate: the score appears instantly, the narrative flows in — and "LLM-streaming UI" is a named 2026 hiring signal.)
 
@@ -104,7 +104,7 @@ Landing → Sign up/in → Onboarding (2 screens) → Dashboard
 
 **In v1 — the 2-week MVP (build exactly this):**
 - Auth (hosted provider), PWA installability (manifest + service worker).
-- Capture: own-words prediction + static examples/tips, confidence, date, optional reasoning fields, auto-categorization, embedding on save.
+- Capture: decision + success criterion (both required, own words) + static examples/tips, confidence, date, optional reasoning fields, auto-categorization, embedding on save.
 - **Track-record surfacing** at capture (semantic similarity vs. own resolved history; static base-rate fallback for new users).
 - Pending/open + due-for-resolution lists; email reminders (daily cron).
 - Resolve (YES/NO/Void + outcome note) with instant per-prediction Brier + running Brier.
@@ -143,16 +143,25 @@ users            (largely handled by auth provider)
 
 predictions
   id (uuid, pk) · user_id (fk)
-  text                 -- the user's own words, verbatim
+  decision             -- text, required at capture: the choice being made
+                       --   ("What are you deciding?"). Nullable in the
+                       --   database only for legacy rows written before
+                       --   this requirement existed.
+  text                 -- the success criterion, required at capture
+                       --   ("How will you know it went well?"), the
+                       --   user's own words, verbatim — always the field
+                       --   that gets scored
   reasoning            -- nullable text: "why do you think so"
-  plan_or_disconfirm   -- nullable text: plan (self) / what-would-change-my-mind (world)
-  prediction_kind      -- 'self' | 'world' (deterministic branch for the second field)
+  plan_or_disconfirm   -- nullable text: plan (self) / what-would-change-my-mind
+                       --   (world — legacy rows only; every new entry is 'self')
+  prediction_kind      -- 'self' | 'world' (deterministic branch for the second field;
+                       --   'world' only occurs on legacy rows with no decision)
   confidence           -- numeric 0.00–1.00
   resolution_date      -- date
   category             -- AI-assigned: work|health|relationships|money|self
   reasoning_type       -- AI-assigned evidence style: base_rate|specific_evidence|
                        --   trust_in_person|gut_feel|plan_optimism|null
-  embedding            -- vector(1536): prediction + reasoning, for similarity search
+  embedding            -- vector(1536): success criterion + reasoning, for similarity search
   status               -- 'open' | 'resolved' | 'void'
   outcome              -- nullable boolean
   outcome_note         -- nullable text: user's one-liner on what happened
@@ -175,7 +184,7 @@ user_stats           -- optional cache
   user_id (pk) · n_resolved · running_brier · ece · updated_at
 ```
 
-Design notes: `confidence` + `outcome` alone power all scoring. The frozen `reasoning` + `outcome_note` pair powers the post-mortem. `embedding` powers track-record surfacing (pgvector cosine similarity, filtered to the user's own resolved rows). `reasoning_type` powers the calibration-by-reasoning-style breakdown. `ai_calls` is both the cost cap and the recruiter-facing observability dashboard.
+Design notes: `confidence` + `outcome` alone power all scoring, attached to `text` — the success criterion is always the scoreable claim, never `decision`. The frozen `reasoning` + `outcome_note` pair powers the post-mortem. `embedding` powers track-record surfacing (pgvector cosine similarity, filtered to the user's own resolved rows). `reasoning_type` powers the calibration-by-reasoning-style breakdown. `ai_calls` is both the cost cap and the recruiter-facing observability dashboard. `decision` and `text` are both required at capture going forward; rows with `decision` null are historic forecasts, saved before this requirement existed — they still render and still score exactly like every row that follows.
 
 ---
 
